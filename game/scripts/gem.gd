@@ -1,7 +1,11 @@
 extends Node3D
-## Material pickup dropped by waste monsters.
+## Material pickup dropped by waste monsters: a glowing faceted crystal
+## (or a water bottle for healing).
 
 const MF = preload("res://scripts/mesh_factory.gd")
+const ModelBuilder = preload("res://scripts/model_builder.gd")
+
+static var _meshes := {}
 
 var mat_type := "plastic"
 var value := 1.0
@@ -11,17 +15,29 @@ var _t := 0.0
 var _mesh: MeshInstance3D
 
 
+static func _mesh_for(t: String) -> Mesh:
+	if not _meshes.has(t):
+		var mb := ModelBuilder.new()
+		if t == "heal":
+			mb.cyl(0.15, 0.15, 0.42, Color(0.35, 0.8, 1.0), Vector3(0, 0, 0))
+			mb.cyl(0.155, 0.155, 0.16, Color(0.96, 0.96, 0.96), Vector3(0, -0.02, 0))
+			mb.cyl(0.08, 0.08, 0.1, Color(0.15, 0.35, 0.9), Vector3(0, 0.26, 0))
+		else:
+			var c: Color = GameData.MATERIALS[t].color
+			mb.gem(0.2, c, Vector3.ZERO, Vector3(0.75, 1.35, 0.75))
+			mb.gem(0.09, c.lightened(0.4), Vector3(0.12, -0.1, 0.05), Vector3(0.7, 1.2, 0.7), Vector3(0, 0.6, 0.4))
+		_meshes[t] = mb.commit()
+	return _meshes[t]
+
+
 func setup(t: String, v: float) -> void:
 	mat_type = t
 	value = v
 	_t = randf() * TAU
-	var color: Color = GameData.MATERIALS[t].color
-	var size := 0.32 if v < 4.0 else 0.48
-	if t == "heal":
-		_mesh = MF.cyl(self, 0.16, 0.16, 0.5, color, Vector3(0, 0.5, 0), false)
-		MF.cyl(_mesh, 0.08, 0.08, 0.14, Color(0.15, 0.3, 0.9), Vector3(0, 0.3, 0), false)
-	else:
-		_mesh = MF.inst(MF.prism_mesh(Vector3(size, size * 1.3, size * 0.6)), MF.mat(color, 0.6), self, Vector3(0, 0.45, 0), false)
+	var mat := MF.vc_mat() if t == "heal" else MF.vc_mat(false, 1.4)
+	_mesh = MF.inst(_mesh_for(t), mat, self, Vector3(0, 0.45, 0), false)
+	if v >= 4.0:
+		_mesh.scale = Vector3.ONE * 1.5
 
 
 func animate(delta: float) -> void:

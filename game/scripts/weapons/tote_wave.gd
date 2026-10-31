@@ -13,9 +13,8 @@ func tick(delta: float) -> void:
 	timer = cd(s[2])
 	for e in game.enemies_near(player.position, s[0]):
 		game.damage_enemy(e, s[1], flat(e.position - player.position).normalized(), s[3])
-	var ring := MF.inst(MF.torus_mesh(0.9, 1.0), MF.mat(Color(0.95, 0.88, 0.7, 0.8), 0.8, true), self, Vector3(player.position.x, 0.4, player.position.z), false)
-	ring.scale = Vector3(0.3, 1, 0.3)
-	var tw := ring.create_tween()
-	tw.tween_property(ring, "scale", Vector3(s[0], 1, s[0]), 0.3).set_ease(Tween.EASE_OUT)
-	tw.tween_callback(ring.queue_free)
+	# a cotton-colored double ripple
+	game.fx.shockwave(player.position, Color(1.0, 0.92, 0.72), s[0], 0.32, 2.4)
+	get_tree().create_timer(0.08).timeout.connect(func():
+		game.fx.shockwave(player.position, Color(0.9, 0.75, 0.5), s[0] * 0.75, 0.3, 1.4))
 	Sfx.play("whoosh", -4, 0.1)

@@ -1,33 +1,52 @@
 extends "res://scripts/weapons/weapon.gd"
 ## Wind Turbine: blades orbit the player.
 
+const ModelBuilder = preload("res://scripts/model_builder.gd")
+const Fx = preload("res://scripts/fx.gd")
+
 # blades, damage, orbit radius, angular speed
 const STATS := [[2, 10.0, 3.0, 3.0], [3, 10.0, 3.0, 3.2], [3, 15.0, 3.2, 3.4], [4, 15.0, 3.4, 3.6], [5, 22.0, 3.8, 4.0]]
 const HIT_COOLDOWN := 0.45
 
+static var _rotor: Mesh
+
 var _blades: Array[Node3D] = []
+var _orbit: MeshInstance3D
 var _angle := 0.0
 var _recent := {}  # enemy -> time left before it can be hit again
 
 
+static func _rotor_mesh() -> Mesh:
+	if _rotor == null:
+		var mb := ModelBuilder.new()
+		mb.sphere(0.13, Color(0.8, 0.83, 0.86), Vector3.ZERO, Vector3(1, 0.8, 1))
+		for k in 3:
+			var a := float(k) / 3.0 * TAU
+			mb.box(Vector3(0.13, 0.04, 0.8), Color(0.97, 0.98, 1.0), Vector3(sin(a), 0, cos(a)) * 0.42, Vector3(0.25, a, 0))
+			mb.box(Vector3(0.135, 0.045, 0.12), Color(0.9, 0.25, 0.2), Vector3(sin(a), 0, cos(a)) * 0.78, Vector3(0.25, a, 0))
+		_rotor = mb.commit()
+	return _rotor
+
+
 func _on_level() -> void:
+	if _orbit == null:
+		_orbit = Fx.ground(self, {"color": Color(0.85, 0.95, 1.0, 0.35), "inner": 0.94, "softness": 0.05, "dashes": 8.0, "spin": 4.0, "intensity": 0.8}, 1.0, 0.06)
 	for b in _blades:
 		b.queue_free()
 	_blades.clear()
 	for i in STATS[level - 1][0]:
 		var b := Node3D.new()
 		add_child(b)
-		MF.cyl(b, 0.12, 0.12, 0.16, Color(0.75, 0.78, 0.8), Vector3.ZERO, false)
-		for k in 3:
-			var blade := MF.box(b, Vector3(0.12, 0.05, 0.75), Color(0.97, 0.98, 1.0), Vector3.ZERO, false)
-			blade.rotation.y = float(k) / 3.0 * TAU
-			blade.position = Vector3(sin(blade.rotation.y), 0, cos(blade.rotation.y)) * 0.38
+		MF.inst(_rotor_mesh(), MF.vc_mat(false, 0.4), b, Vector3.ZERO, false)
+		MF.inst(MF.cyl_mesh(0.85, 0.85, 0.01), MF.glow_mat(Color(0.8, 0.95, 1.0, 0.14), 1.5), b, Vector3.ZERO, false)
 		_blades.append(b)
 
 
 func tick(delta: float) -> void:
 	var s: Array = STATS[level - 1]
 	_angle += s[3] * delta
+	_orbit.position = Vector3(player.position.x, 0.06, player.position.z)
+	_orbit.scale = Vector3(s[2] + 0.4, 1, s[2] + 0.4)
 	for e in _recent.keys():
 		_recent[e] -= delta
 		if _recent[e] <= 0.0:

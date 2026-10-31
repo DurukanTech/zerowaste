@@ -11,10 +11,11 @@ const HUD = preload("res://scripts/ui/hud.gd")
 const LevelUpUI = preload("res://scripts/ui/level_up.gd")
 const PauseMenu = preload("res://scripts/ui/pause_menu.gd")
 const EndScreen = preload("res://scripts/ui/end_screen.gd")
+const Fx = preload("res://scripts/fx.gd")
 
 const CELL := 2.0
 const MAX_GEMS := 400
-const CAM_OFFSET := Vector3(0, 17.0, 11.5)
+const CAM_OFFSET := Vector3(0, 15.0, 10.5)
 
 var player
 var camera: Camera3D
@@ -22,6 +23,7 @@ var enemy_root: Node3D
 var gem_root: Node3D
 var weapon_root: Node3D
 var fx_root: Node3D
+var fx
 
 var enemies: Array = []
 var bosses: Array = []
@@ -52,15 +54,18 @@ var _first_ewaste_hint := true
 
 # Headless soak test: `godot --headless --fixed-fps 60 res://scenes/game.tscn -- --autotest`
 var autotest := false
+var showcase := false
 var _perf_acc := 0.0
 var _perf_frames := 0
 var _perf_worst := 0.0
 var _perf_t := 0.0
+var _perf_real := 0
 
 
 func _ready() -> void:
 	randomize()
 	autotest = OS.get_cmdline_user_args().has("--autotest")
+	showcase = OS.get_cmdline_user_args().has("--showcase")
 	for t in GameData.BIN_TYPES:
 		carried[t] = 0
 		recycled[t] = 0
@@ -72,6 +77,8 @@ func _ready() -> void:
 	gem_root = _make_root("Gems")
 	weapon_root = _make_root("Weapons")
 	fx_root = _make_root("FX")
+	fx = Fx.new()
+	add_child(fx)
 	player = Player.new()
 	player.game = self
 	player.scale = Vector3.ONE * 1.25
@@ -140,12 +147,33 @@ func _process(delta: float) -> void:
 ## With `--shots=<dir>` saves screenshots during an autotest run, then quits.
 func _autotest_shots() -> void:
 	var dir := ""
+	var showcase := false
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--shots="):
 			dir = a.substr(8)
+		showcase = showcase or a == "--showcase"
 	if dir == "":
 		return
 	var prev := elapsed - get_process_delta_time()
+	if showcase:
+		# model gallery: every enemy frozen facing the camera, then all weapons
+		if prev <= 0.0:
+			_spawn_acc = -1000.0
+			var kinds := ["bag", "bottle", "rot", "box", "battery", "rot_small"]
+			for i in kinds.size():
+				_gallery(kinds[i], player.position + Vector3(-5.0 + i * 2.0, 0, 3.2))
+			_gallery("miniboss", player.position + Vector3(-6.5, 0, -3.5))
+			_gallery("boss", player.position + Vector3(6.5, 0, -4.0))
+		if elapsed >= 1.7 and prev < 1.7:
+			for id in GameData.WEAPONS:
+				for i in 3:
+					player.add_or_upgrade_weapon(id)
+		for mark in [1.6, 3.2]:
+			if elapsed >= mark and prev < mark:
+				get_viewport().get_texture().get_image().save_png(dir.path_join("showcase_%d.png" % int(mark * 10)))
+		if elapsed > 3.3:
+			get_tree().quit()
+		return
 	if elapsed >= 94.0 and prev < 94.0:
 		# preview the level-up cards without pausing so they get captured
 		level_ui._choices = roll_choices()
@@ -160,6 +188,14 @@ func _autotest_shots() -> void:
 		get_tree().quit()
 
 
+func _gallery(kind: String, pos: Vector3) -> void:
+	var e = spawn_enemy(kind, pos, 500.0)
+	e.speed = 0.0
+	e.knock_resist = 0.0
+	e._charge_t = 999.0
+	e._special_t = 999.0
+
+
 func _autotest_report(delta: float, ms: float) -> void:
 	player.hp = player.max_hp
 	_perf_acc += ms
@@ -170,8 +206,12 @@ func _autotest_report(delta: float, ms: float) -> void:
 		var w := []
 		for x in player.weapons:
 			w.append("%s%d" % [x.id, x.level])
-		print("[autotest] t=%s lv=%d enemies=%d gems=%d kills=%d sorted=%s logic_ms avg=%.2f worst=%.2f weapons=%s" % [
-			int(elapsed), player.level, enemies.size(), gems.size(), kills, recycled, _perf_acc / _perf_frames, _perf_worst, w])
+		# real frames per wall-clock second (meaningful in windowed runs)
+		var now := Time.get_ticks_msec()
+		var fps := _perf_frames * 1000.0 / maxf(1.0, now - _perf_real) if _perf_real > 0 else 0.0
+		_perf_real = now
+		print("[autotest] t=%s lv=%d enemies=%d gems=%d kills=%d logic_ms avg=%.2f worst=%.2f fps=%.0f weapons=%s" % [
+			int(elapsed), player.level, enemies.size(), gems.size(), kills, _perf_acc / _perf_frames, _perf_worst, fps, w])
 		_perf_t = 0.0
 		_perf_acc = 0.0
 		_perf_frames = 0
@@ -285,6 +325,12 @@ func spawn_enemy(kind: String, pos: Vector3, hp_override := -1.0):
 	enemy_root.add_child(e)
 	e.position = _clamp_arena(pos)
 	enemies.append(e)
+	# rise out of the ground; bosses get a slower, heavier entrance
+	var grow := 1.0 if e.is_boss else 0.3
+	e.scale = Vector3(0.1, 0.1, 0.1)
+	e.create_tween().tween_property(e, "scale", Vector3.ONE, grow).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if e.is_boss:
+		fx.big_burst(e.position, Color(0.75, 0.3, 0.9), 30)
 	if e.is_boss:
 		bosses.append(e)
 	return e
@@ -349,7 +395,7 @@ func _update_enemies(delta: float) -> void:
 		e.position += (vel + e.knock) * delta + sep * 0.35
 		e.knock = e.knock.lerp(Vector3.ZERO, minf(1.0, 8.0 * delta))
 		e.position = _clamp_arena(e.position)
-		if dist > 0.01:
+		if dist > 0.01 and e.speed > 0.0:
 			e.rotation.y = lerp_angle(e.rotation.y, atan2(dir.x, dir.z), minf(1.0, 10.0 * delta))
 		# contact damage
 		if dist < e.radius + Player.RADIUS:
@@ -366,7 +412,7 @@ func _explode(e) -> void:
 	player.hurt(e.damage)
 	add_shake(0.35)
 	Sfx.play("explode", -2, 0.1)
-	_spawn_burst(e.position, Color(1.0, 0.5, 0.1), 20)
+	fx.big_burst(e.position, Color(1.0, 0.55, 0.15), 24)
 
 
 func enemies_near(pos: Vector3, r: float) -> Array:
@@ -432,6 +478,7 @@ func damage_enemy(e, amount: float, knock_dir := Vector3.ZERO, knock_force := 0.
 	amount *= player.damage_mult()
 	e.hp -= amount
 	e.hit_flash()
+	fx.hit(e.position)
 	if knock_force > 0.0:
 		e.knock += knock_dir * knock_force * e.knock_resist
 	_show_damage(e.position, amount, e.is_boss)
@@ -454,14 +501,16 @@ func _kill(e) -> void:
 			hud.set_boss(null)
 			add_shake(0.4)
 			Sfx.play("explode")
+			fx.big_burst(pos, Color(0.6, 1.0, 0.5), 50)
 		"boss":
 			add_shake(0.6)
 			Sfx.play("explode")
-			_spawn_burst(pos + Vector3(0, 2, 0), Color(1, 0.85, 0.3), 40)
+			fx.big_burst(pos, Color(1, 0.85, 0.3), 60)
 			hud.set_boss(null)
 			_finish.call_deferred(true)
 		_:
 			kills += 1
+			fx.death(pos, GameData.MATERIALS[e.material_type].color)
 			spawn_gem(pos, e.material_type, float(e.xp))
 			if e.kind == "rot":
 				for i in 2:
@@ -556,6 +605,7 @@ func _spawn_bins() -> void:
 func _update_bins(delta: float) -> void:
 	for b in bins:
 		b.tick(delta)
+		b.set_active(carried[b.mat_type] > 0)
 		if b.busy:
 			continue
 		var t: String = b.mat_type
@@ -580,6 +630,7 @@ func _deposit(b) -> void:
 	hud.toast(msg + "\n" + Loc.t("did_you_know") + " " + GameData.material_fact(t), GameData.MATERIALS[t].color)
 	Sfx.play("deposit", -2)
 	b.burst()
+	fx.shockwave(b.position, GameData.MATERIALS[t].color, 4.0, 0.4, 2.5)
 	b.relocate(_new_bin_pos(b))
 
 
@@ -606,6 +657,7 @@ func _new_bin_pos(moving) -> Vector3:
 
 func on_level_up() -> void:
 	Sfx.play("levelup", -3)
+	fx.level_up(player.position)
 	level_ui.queue_level_up()
 
 
@@ -721,21 +773,3 @@ func _show_damage(pos: Vector3, amount: float, big: bool) -> void:
 	tw.tween_callback(func(): l.visible = false)
 	_dmg_tweens[i] = tw
 
-
-func _spawn_burst(pos: Vector3, color: Color, amount: int) -> void:
-	var p := CPUParticles3D.new()
-	p.one_shot = true
-	p.amount = amount
-	p.lifetime = 0.7
-	p.explosiveness = 1.0
-	p.direction = Vector3.UP
-	p.spread = 80.0
-	p.initial_velocity_min = 4.0
-	p.initial_velocity_max = 9.0
-	p.gravity = Vector3(0, -15, 0)
-	p.mesh = MF.box_mesh(Vector3(0.2, 0.2, 0.2))
-	p.material_override = MF.mat(color, 1.0)
-	fx_root.add_child(p)
-	p.position = pos + Vector3(0, 0.6, 0)
-	p.emitting = true
-	get_tree().create_timer(1.5).timeout.connect(p.queue_free)

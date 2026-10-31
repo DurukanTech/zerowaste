@@ -5,6 +5,10 @@ extends "res://scripts/weapons/weapon.gd"
 const STATS := [[1, 10.0, 8.0, 1.8], [1, 15.0, 8.5, 1.7], [2, 15.0, 9.0, 1.6], [2, 21.0, 9.5, 1.5], [3, 26.0, 10.0, 1.3]]
 const SPEED := 15.0
 
+const ModelBuilder = preload("res://scripts/model_builder.gd")
+
+static var _mesh: Mesh
+
 var _rangs: Array = []
 
 
@@ -47,13 +51,24 @@ func tick(delta: float) -> void:
 				game.damage_enemy(e, s[1], flat(e.position - node.position).normalized(), 3.0)
 
 
+static func _rang_mesh() -> Mesh:
+	if _mesh == null:
+		# made from recycled plastic: two colored arms with white tips
+		var mb := ModelBuilder.new()
+		mb.box(Vector3(0.75, 0.09, 0.2), Color(1.0, 0.55, 0.2), Vector3(0.27, 0, 0.1), Vector3(0, 0.5, 0))
+		mb.box(Vector3(0.75, 0.09, 0.2), Color(0.2, 0.78, 0.72), Vector3(-0.27, 0, 0.1), Vector3(0, -0.5, 0))
+		mb.cyl(0.13, 0.13, 0.1, Color(0.97, 0.97, 0.95), Vector3(0, 0, 0.27))
+		mb.sphere(0.1, Color(0.97, 0.97, 0.95), Vector3(0.58, 0, -0.08), Vector3(1, 0.5, 1))
+		mb.sphere(0.1, Color(0.97, 0.97, 0.95), Vector3(-0.58, 0, -0.08), Vector3(1, 0.5, 1))
+		_mesh = mb.commit()
+	return _mesh
+
+
 func _throw(dir: Vector3, rng: float) -> void:
 	var node := Node3D.new()
 	add_child(node)
 	node.position = player.position + Vector3(0, 0.9, 0)
-	var c := Color(1.0, 0.55, 0.2)
-	var a := MF.box(node, Vector3(0.7, 0.08, 0.18), c, Vector3(0.25, 0, 0), false)
-	a.rotation.y = 0.5
-	var b := MF.box(node, Vector3(0.7, 0.08, 0.18), Color(0.2, 0.75, 0.7), Vector3(-0.25, 0, 0), false)
-	b.rotation.y = -0.5
+	MF.inst(_rang_mesh(), MF.vc_mat(false, 0.5), node, Vector3.ZERO, false)
+	# spin blur disc
+	MF.inst(MF.cyl_mesh(0.75, 0.75, 0.02), MF.glow_mat(Color(1.0, 0.8, 0.5, 0.18), 1.5), node, Vector3.ZERO, false)
 	_rangs.append({"node": node, "dir": dir, "dist": 0.0, "range": rng, "returning": false, "hit": {}})

@@ -24,6 +24,8 @@ var _toast_tween: Tween
 var _banner: Label
 var _banner_tween: Tween
 var _overlay: Control
+var _vignette: TextureRect
+var _hurt := 0.0
 var _pulse := 0.0
 
 
@@ -33,6 +35,24 @@ func _ready() -> void:
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
+
+	# red screen-edge vignette: pulses on hits and while health is low
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+	g.colors = PackedColorArray([Color(0.8, 0, 0, 0), Color(0.8, 0, 0, 0.05), Color(0.75, 0.0, 0.05, 0.75)])
+	var gt := GradientTexture2D.new()
+	gt.gradient = g
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.05, 1.05)
+	_vignette = TextureRect.new()
+	_vignette.texture = gt
+	_vignette.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_vignette.stretch_mode = TextureRect.STRETCH_SCALE
+	_vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_vignette.modulate.a = 0.0
+	_root.add_child(_vignette)
 
 	_overlay = Control.new()
 	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -171,6 +191,9 @@ func _bar_fill(parent: Control, c: Color) -> ColorRect:
 func refresh(delta: float) -> void:
 	_pulse += delta
 	var p = game.player
+	_hurt = maxf(0.0, _hurt - delta * 2.5)
+	var low := clampf(1.0 - p.hp / (p.max_hp * 0.35), 0.0, 1.0)
+	_vignette.modulate.a = maxf(_hurt, low * (0.55 + sin(_pulse * 5.0) * 0.25))
 	_xp_fill.anchor_right = clampf(p.xp / p.xp_need, 0.0, 1.0)
 	_hp_fill.anchor_right = clampf(p.hp / p.max_hp, 0.0, 1.0)
 	_hp_label.text = "%s %d / %d" % [Loc.t("hp"), ceili(p.hp), int(p.max_hp)]
@@ -193,6 +216,10 @@ func refresh(delta: float) -> void:
 		else:
 			set_boss(null)
 	_overlay.queue_redraw()
+
+
+func hurt_flash() -> void:
+	_hurt = maxf(_hurt, 0.45)
 
 
 func set_boss(b) -> void:

@@ -22,7 +22,12 @@ scripts/
   gem.gd       malzeme pickup
   recycle_bin.gd
   mesh_factory.gd  mesh/material cache
-  world_builder.gd Antalya sahili haritası (oyun + menü ortak), menü için gün batımı ışığı
+  model_builder.gd birçok primitive'i vertex-color'lı TEK mesh'e birleştirir (1 draw call)
+  enemy_models.gd  düşman/boss modelleri (opaque + alpha + glow katmanları, tür başına cache)
+  fx.gd            zemin efekti shader'ı (halka/disk/girdap) + havuzlu partiküller, shockwave, flaş ışığı
+  spinner.gd       sürekli dönen node (rüzgar türbini rotorları)
+  world_builder.gd Antalya sahili haritası (oyun + menü ortak): çim/parke/kum/deniz shader'ları,
+                   40 m'lik chunk'lara birleştirilmiş dekor, MultiMesh çim, ışık + glow ayarları
   menu_backdrop.gd ana menünün canlı 3D arka planı (dönen kamera, kahraman, kutular, canavarlar)
   main_menu.gd     sol menü kolonu, sağda ayrıştırma ve "Biliyor muydun?" kartları, Nasıl Oynanır penceresi
   weapons/     weapon.gd (base) + 6 silah
@@ -33,6 +38,9 @@ scripts/
 - Düşmanlar **CharacterBody değil**, düz `Node3D`. Hepsi tek bir döngüde `game.gd` içinden güncelleniyor.
 - **Uzamsal grid** (hücre = 2 birim): Ayrıştırma (separation) ve silah sorguları sadece komşu hücrelere bakıyor. Bosslar grid dışında tutulup ayrıca kontrol ediliyor.
 - Mesh ve material'lar `mesh_factory.gd` içinde cache'leniyor ve paylaşılıyor.
+- **Görsel overhaul:** Her model `ModelBuilder` ile tek mesh'e birleştiriliyor. Normal düşmanlar 1-2 draw call, oyuncu 6 parça (yürüme animasyonu için ayrı uzuvlar), harita dekoru chunk başına tek mesh, çim öbekleri tek MultiMesh.
+- **Işık:** Güneş (2 split, yumuşak gölge), soğuk dolgu ışığı, rim'li materyaller, glow (bloom), hafif kontrast/doygunluk.
+- **Efektler:** Vuruş kıvılcımları ve ölüm patlamaları havuzlu (sınırsız sayıda node üretmez). Vuruş parlaması boss'ları sürekli beyaz bırakmasın diye 0.16 sn'de bir sınırlı.
 - Ekranda en fazla 320 düşman, 400 malzeme var. Sınır aşılırsa en eski malzeme otomatik toplanıyor.
 - Hasar sayıları 30'luk bir havuzdan (`Label3D`) dönüşümlü kullanılıyor.
 

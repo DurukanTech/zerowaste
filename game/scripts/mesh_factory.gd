@@ -12,6 +12,7 @@ static func mat(color: Color, emission := 0.0, unshaded := false) -> StandardMat
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color
 	m.roughness = 0.85
+	_stylize(m)
 	if color.a < 0.99:
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	if emission > 0.0:
@@ -20,6 +21,65 @@ static func mat(color: Color, emission := 0.0, unshaded := false) -> StandardMat
 		m.emission_energy_multiplier = emission
 	if unshaded:
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_mats[key] = m
+	return m
+
+
+## Soft rim light gives the low-poly models a toy-like, readable silhouette.
+static func _stylize(m: StandardMaterial3D) -> void:
+	m.rim_enabled = true
+	m.rim = 0.35
+	m.rim_tint = 0.6
+
+
+## Material for ModelBuilder meshes: albedo comes from vertex colors.
+static func vc_mat(alpha := false, emission := 0.0) -> StandardMaterial3D:
+	var key := "vc|%s|%s" % [alpha, emission]
+	if _mats.has(key):
+		return _mats[key]
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true
+	m.roughness = 0.7
+	_stylize(m)
+	if alpha:
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	if emission > 0.0:
+		# emissive copy of the vertex color for glowing parts
+		m.emission_enabled = true
+		m.emission = Color(1, 1, 1)
+		m.emission_energy_multiplier = emission
+		m.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
+	_mats[key] = m
+	return m
+
+
+## Swapped in briefly when something is hit: same vertex colors, but lit
+## up with a white emission so the model stays readable while flashing.
+static func flash_mat() -> StandardMaterial3D:
+	if not _mats.has("flash"):
+		var m := StandardMaterial3D.new()
+		m.vertex_color_use_as_albedo = true
+		m.vertex_color_is_srgb = true
+		m.emission_enabled = true
+		m.emission = Color(1, 1, 1)
+		m.emission_energy_multiplier = 0.55
+		_mats["flash"] = m
+	return _mats["flash"]
+
+
+## Additive, unshaded glow material (beams, trails, sparkles).
+static func glow_mat(color: Color, energy := 2.0) -> StandardMaterial3D:
+	var key := "glow|%s|%s" % [color.to_html(), energy]
+	if _mats.has(key):
+		return _mats[key]
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = Color(color.r * energy, color.g * energy, color.b * energy, color.a)
+	m.no_depth_test = false
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_mats[key] = m
 	return m
 

@@ -106,6 +106,7 @@ func _process(delta: float) -> void:
 	if nearest:
 		var to := nearest.position - CENTER
 		_player.rotation.y = lerp_angle(_player.rotation.y, atan2(to.x, to.z), minf(1.0, 3.0 * delta))
+	_player.animate(delta, false)
 
 
 func _update_camera() -> void:
