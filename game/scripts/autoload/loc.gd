@@ -7,7 +7,6 @@ var lang := "tr"
 
 const STRINGS := {
 	"title": {"tr": "SIFIR ATIK SAVAŞÇISI", "en": "ZERO WASTE WARRIOR"},
-	"subtitle": {"tr": "COP31 Türkiye • Game Hackathon", "en": "COP31 Türkiye • Game Hackathon"},
 	"tagline": {"tr": "Atıkları topla, doğru kutuya at, aşırı tüketimi durdur!", "en": "Collect the waste, sort it right, stop overconsumption!"},
 	"play": {"tr": "OYNA", "en": "PLAY"},
 	"how_to": {"tr": "NASIL OYNANIR", "en": "HOW TO PLAY"},
@@ -57,7 +56,7 @@ const STRINGS := {
 	"ewaste_hint": {"tr": "Pil = e-atık: kutulara değil, özel toplama noktasına!", "en": "Battery = e-waste: special collection point, not the bins!"},
 	"full": {"tr": "DOLU", "en": "FULL"},
 	"boss_down": {"tr": "Çöp Dağı yıkıldı!", "en": "Trash Mountain collapsed!"},
-	"credits": {"tr": "Godot 4 ile 48 saatte yapıldı • Tüm görseller ve sesler kodla üretildi", "en": "Made with Godot 4 in 48 hours • All visuals and sounds generated in code"},
+	"credits": {"tr": "Godot 4 ile yapıldı • Tüm görseller ve sesler kodla üretildi", "en": "Made with Godot 4 • All visuals and sounds generated in code"},
 }
 
 

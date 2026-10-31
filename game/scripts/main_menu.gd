@@ -70,9 +70,6 @@ func _build() -> void:
 	var title := UI.label(Loc.t("title"), 76, Color(0.55, 1.0, 0.65), 14)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(title)
-	var sub := UI.label(Loc.t("subtitle"), 24, Color(1, 0.9, 0.4), 6)
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(sub)
 	var tag := UI.label(Loc.t("tagline"), 20, Color(0.85, 0.95, 0.95), 4)
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(tag)

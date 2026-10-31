@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Sıfır Atık Savaşçısı - Zero Waste Warrior"
-config/description="COP31 Türkiye Game Hackathon - Sıfır Atık temalı 3D roguelite"
+config/description="Sıfır Atık temalı 3D roguelite"
 run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
