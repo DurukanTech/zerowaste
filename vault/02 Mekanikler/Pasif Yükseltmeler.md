@@ -21,8 +21,17 @@ tags: [mekanik, denge]
 - Sahip olunan silahların ağırlığı ×1.6, böylece build daha hızlı derinleşir.
 - Sv.5'e ulaşmış bir silahın **evrim partneri** olan pasif, henüz alınmadıysa ×2.5 ağırlıkla çıkar.
 - Hazır bir evrim varsa ilk kart her zaman **EVRİM** kartıdır ([[Silahlar]]).
-- 3 kart gösterilir. Havuz boşsa "Su Molası: +30 can" kartı çıkar.
+- 3 kart gösterilir. Gerçek kartlar azalınca boş yerler **sınırsız gelişim kartlarıyla** dolar:
+
+| Kart | Etki (her alınışta) |
+|---|---|
+| Kararlı Adımlar | +%4 hasar |
+| Sağlıklı Beslenme | +8 maks. can, 8 can yenile |
+| Kondisyon | +%3 hareket hızı |
+| Geniş Etki | +%4 silah alanı |
+| Verimli Çalışma | −%3 bekleme süresi (en fazla −%40) |
+| Dikkatli Göz | +%8 toplama yarıçapı |
 - **Yenile (R)**: Kalıcı "Yeniden Düşün" yükseltmesiyle run başına kart yenileme hakkı ([[Kalıcı Gelişim]]).
-- **Ödül sandığı**: Görev, elit düşman ve 4+ e-atık teslimi, seviye atlamadan ekstra bir kart seçimi verir.
+- **Ödül sandığı**: Görev, elit düşman ve 4+ e-atık teslimi, seviye atlamadan ekstra bir kart seçimi verir (run başına ~15).
 
 İlgili notlar: [[Silahlar]]

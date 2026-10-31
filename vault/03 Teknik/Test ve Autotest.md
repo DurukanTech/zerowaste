@@ -56,6 +56,19 @@ Autotest pilotu her 3 sn'de bir atılır, ultimate dolunca hemen kullanır, e-at
 
 Final boss canı iki run arasında bir değer olarak **14000** yapıldı. Evrimlerin ilk denemede 2:00'de gelmesi üzerine 5:00 kilidi eklendi.
 
+## Zorluk analizi ve düzeltme (2026-10-31)
+Autotest her 30 sn'de bir `[balance]` satırı da basar: sandık kaynakları, öldürülen elit sayısı, kart havuzunun boşaldığı an, tek vuruşta ölen düşman oranı ve alınan hasar.
+
+| Ölçüm | Önce | Sonra |
+|---|---|---|
+| Ödül sandığı (10:00'a kadar) | 89 (81'i elitlerden) | 17 |
+| Kart havuzunun boşalması | 7:12 | Hiç (gelişim kartları) |
+| 10:00'da seviye | 38 | 32 |
+| Tek vuruşta ölen düşman (8–10 dk) | %35–40 | %6–20 |
+| 30 sn'de alınan hasar (8–10 dk) | ölçülmedi | 100–400 |
+| Mini boss | 45 sn | 41 sn (can 1570, güç 29) |
+| Final boss | 29–138 sn | 109–211 sn (pilot bossa saldırmıyor, kutulara yürüyor) |
+
 > [!note] Kare hızını en çok etkileyen şey ekrandaki malzeme sayısı (her biri 1 draw call). Gerekirse malzemeler MultiMesh'e taşınabilir.
 
 > [!note] Autotest ölümsüz olduğu için zorluk ölçmez

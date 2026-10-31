@@ -34,7 +34,7 @@ func _on_level() -> void:
 	for b in _blades:
 		b.queue_free()
 	_blades.clear()
-	for i in STATS[level - 1][0] * (2 if evolved else 1):
+	for i in row(STATS, 1, -1)[0] * (2 if evolved else 1):
 		var b := Node3D.new()
 		add_child(b)
 		MF.inst(_rotor_mesh(), MF.vc_mat(false, 0.4), b, Vector3.ZERO, false)
@@ -43,7 +43,7 @@ func _on_level() -> void:
 
 
 func tick(delta: float) -> void:
-	var s: Array = STATS[level - 1]
+	var s: Array = row(STATS, 1, -1)
 	_angle += s[3] * delta
 	_orbit.position = Vector3(player.position.x, 0.06, player.position.z)
 	var orbit_r := area(s[2])

@@ -26,7 +26,7 @@ const ENEMIES := {
 	"rot_small": {"name": {"tr": "Küçük Yığın", "en": "Small Heap"}, "hp": 6.0, "speed": 3.6, "damage": 5.0, "xp": 1, "material": "organic", "radius": 0.35, "knock": 1.0},
 	"box": {"name": {"tr": "Karton Canavar", "en": "Cardboard Brute"}, "hp": 34.0, "speed": 2.1, "damage": 12.0, "xp": 3, "material": "paper", "radius": 0.65, "knock": 0.4},
 	"battery": {"name": {"tr": "Pil Bombası", "en": "Battery Bomb"}, "hp": 10.0, "speed": 5.0, "damage": 22.0, "xp": 3, "material": "ewaste", "radius": 0.4, "knock": 1.0},
-	"miniboss": {"name": {"tr": "Çöp Dağı", "en": "Trash Mountain"}, "hp": 1800.0, "speed": 1.9, "damage": 25.0, "xp": 0, "material": "mixed", "radius": 1.8, "knock": 0.0},
+	"miniboss": {"name": {"tr": "Çöp Dağı", "en": "Trash Mountain"}, "hp": 1300.0, "speed": 1.9, "damage": 25.0, "xp": 0, "material": "mixed", "radius": 1.8, "knock": 0.0},
 	"spray": {"name": {"tr": "Sprey Kutusu", "en": "Aerosol Can"}, "hp": 16.0, "speed": 3.2, "damage": 8.0, "xp": 3, "material": "ewaste", "radius": 0.4, "knock": 0.9},
 	"foam": {"name": {"tr": "Strafor Sürüsü", "en": "Foam Pack"}, "hp": 5.0, "speed": 5.4, "damage": 5.0, "xp": 1, "material": "plastic", "radius": 0.35, "knock": 1.1},
 	"boss": {"name": {"tr": "Aşırı Tüketim Devi", "en": "Overconsumption Giant"}, "hp": 14000.0, "speed": 2.3, "damage": 35.0, "xp": 0, "material": "mixed", "radius": 2.5, "knock": 0.0},
@@ -136,9 +136,11 @@ const EVOLUTIONS := {
 }
 
 const EVOLVE_AFTER := 300.0  # evolutions unlock after the miniboss
+const WEAPON_MAX := 8        # evolution needs this level
+const PASSIVE_MAX := 5
 const MAX_WEAPONS := 6
 # elite variants: tougher, bigger, glowing, always drop a reward crate
-const ELITE_HP := 7.0
+const ELITE_HP := 12.0
 const ELITE_DMG := 1.5
 const ELITE_SCALE := 1.45
 const MAX_PASSIVES := 6
@@ -152,6 +154,16 @@ const PASSIVES := {
 	"power": {"name": {"tr": "Topluluk Gücü", "en": "Community Power"}, "desc": {"tr": "+%10 hasar", "en": "+10% damage"}, "fact": 20, "color": Color(1.0, 0.45, 0.45)},
 	"repair": {"name": {"tr": "Tamir Kiti", "en": "Repair Kit"}, "desc": {"tr": "-%7 alınan hasar", "en": "-7% damage taken"}, "fact": 23, "color": Color(0.75, 0.75, 0.82)},
 	"seeds": {"name": {"tr": "Tohum Bankası", "en": "Seed Bank"}, "desc": {"tr": "+%10 silah alanı", "en": "+10% weapon area"}, "fact": 24, "color": Color(0.8, 0.65, 0.35)},
+}
+
+## Endless small upgrades offered once every weapon/passive card is used up.
+const STAT_CARDS := {
+	"s_dmg": {"name": {"tr": "Kararlı Adımlar", "en": "Steady Steps"}, "desc": {"tr": "+%4 hasar", "en": "+4% damage"}, "icon": "damage", "color": Color(1.0, 0.55, 0.3)},
+	"s_hp": {"name": {"tr": "Sağlıklı Beslenme", "en": "Healthy Diet"}, "desc": {"tr": "+8 maks. can ve 8 can yenile", "en": "+8 max HP and heal 8"}, "icon": "heart", "color": Color(0.95, 0.35, 0.35)},
+	"s_speed": {"name": {"tr": "Kondisyon", "en": "Stamina"}, "desc": {"tr": "+%3 hareket hızı", "en": "+3% move speed"}, "icon": "speed", "color": Color(0.3, 0.6, 1.0)},
+	"s_area": {"name": {"tr": "Geniş Etki", "en": "Wider Impact"}, "desc": {"tr": "+%4 silah alanı", "en": "+4% weapon area"}, "icon": "seeds", "color": Color(0.8, 0.65, 0.35)},
+	"s_cd": {"name": {"tr": "Verimli Çalışma", "en": "Efficient Work"}, "desc": {"tr": "-%3 bekleme süresi", "en": "-3% cooldowns"}, "icon": "efficiency", "color": Color(1.0, 0.85, 0.3)},
+	"s_pickup": {"name": {"tr": "Dikkatli Göz", "en": "Keen Eye"}, "desc": {"tr": "+%8 toplama yarıçapı", "en": "+8% pickup radius"}, "icon": "net", "color": Color(0.9, 0.9, 0.5)},
 }
 
 ## Persistent upgrades bought in the main menu with recycling points.

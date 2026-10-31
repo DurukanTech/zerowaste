@@ -184,7 +184,7 @@ func _deliver() -> void:
 	p.add_ult(n * 4.0)
 	p.heal(n * 1.5)
 	if n >= 4:
-		game.give_chest()
+		game.give_chest("ewaste")
 	game.fx.big_burst(ewaste_point.position, Color(1.0, 0.75, 0.25), 30)
 	game.hud.toast(Loc.t("ewaste_done").format({"n": n}) + "\n" + Loc.t("did_you_know") + " " + GameData.material_fact("ewaste"), Color(1.0, 0.75, 0.25))
 	Sfx.play("deposit", 0)

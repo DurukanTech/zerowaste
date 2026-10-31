@@ -37,6 +37,7 @@ var xp_need := 5.0
 var weapons: Array = []
 var passives := {}
 var buffs := {}  # buff id -> seconds left
+var bonus := {}  # stat card id -> times taken
 var facing := 0.0
 var moving := false
 var ult := 0.0
@@ -275,15 +276,39 @@ func meta(id: String) -> int:
 
 func speed() -> float:
 	var flood: float = game.events.player_speed_mult() if game != null and game.events != null else 1.0
-	return BASE_SPEED * (1.0 + 0.1 * plv("bike") + 0.04 * meta("speed")) * (1.3 if buffs.has("speed") else 1.0) * flood
+	return BASE_SPEED * (1.0 + 0.1 * plv("bike") + 0.04 * meta("speed") + 0.03 * bn("s_speed")) * (1.3 if buffs.has("speed") else 1.0) * flood
 
 
 func damage_mult() -> float:
-	return (1.0 + 0.1 * plv("power") + 0.05 * meta("dmg")) * (1.4 if buffs.has("damage") else 1.0)
+	return (1.0 + 0.1 * plv("power") + 0.05 * meta("dmg") + 0.04 * bn("s_dmg")) * (1.4 if buffs.has("damage") else 1.0)
+
+
+func bn(id: String) -> int:
+	return bonus.get(id, 0)
+
+
+func add_stat(id: String) -> void:
+	bonus[id] = bn(id) + 1
+	if id == "s_hp":
+		max_hp += 8.0
+		heal(8.0)
+
+
+## Rough build strength: every card taken counts, evolutions count extra.
+## Used by adaptive difficulty and the final boss's health.
+func power_score() -> float:
+	var p := 0.0
+	for w in weapons:
+		p += mini(w.level, GameData.WEAPON_MAX) + (4.0 if w.evolved else 0.0)
+	for id in passives:
+		p += passives[id]
+	for id in bonus:
+		p += bonus[id] * 0.5
+	return p
 
 
 func area_mult() -> float:
-	return 1.0 + 0.1 * plv("seeds")
+	return 1.0 + 0.1 * plv("seeds") + 0.04 * bn("s_area")
 
 
 func armor_mult() -> float:
@@ -303,11 +328,11 @@ func is_dashing() -> bool:
 
 
 func cooldown_mult() -> float:
-	return (1.0 - 0.08 * plv("efficiency")) * (0.7 if buffs.has("firerate") else 1.0)
+	return (1.0 - 0.08 * plv("efficiency")) * maxf(0.6, 1.0 - 0.03 * bn("s_cd")) * (0.7 if buffs.has("firerate") else 1.0)
 
 
 func pickup_radius() -> float:
-	return BASE_PICKUP * (1.0 + 0.3 * plv("net") + 0.12 * meta("pickup"))
+	return BASE_PICKUP * (1.0 + 0.3 * plv("net") + 0.12 * meta("pickup") + 0.08 * bn("s_pickup"))
 
 
 func xp_mult() -> float:
@@ -320,6 +345,7 @@ func hurt(amount: float) -> void:
 	if game.finished or amount <= 0.0 or _iframes > 0.0:
 		return
 	amount *= armor_mult()
+	game.stat_taken += amount
 	game.on_player_hurt()
 	hp -= amount
 	if _hurt_flash <= 0.0:
@@ -350,7 +376,7 @@ func add_xp(amount: float) -> void:
 	while xp >= xp_need:
 		xp -= xp_need
 		level += 1
-		xp_need = 6.0 + (level - 1) * 9.0 + pow(level - 1, 1.95)
+		xp_need = 6.0 + (level - 1) * 9.0 + pow(level - 1, 2.15)
 		game.on_level_up()
 
 

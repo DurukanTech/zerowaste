@@ -2,9 +2,9 @@
 tags: [mekanik, denge]
 ---
 
-# Silahlar (8 adet, 5 seviye + evrim)
+# Silahlar (8 adet, 8 seviye + evrim)
 
-Başlangıç silahı: **Cam Kırığı**. Aynı anda en fazla **6 silah** taşınır. Tüm hasarlar oyuncunun hasar çarpanıyla, bekleme süreleri cooldown çarpanıyla, yarıçap/menziller de **alan çarpanıyla** (Tohum Bankası) çarpılır. Tablolardaki **E** satırı evrimleşmiş hâldir (seviye 6).
+Başlangıç silahı: **Cam Kırığı**. Aynı anda en fazla **6 silah** taşınır. Tüm hasarlar oyuncunun hasar çarpanıyla, bekleme süreleri cooldown çarpanıyla, yarıçap/menziller de **alan çarpanıyla** (Tohum Bankası) çarpılır. Tablolarda Sv.1–5 gösteriliyor. **Sv.6–8 ustalık seviyeleridir:** Sv.5 değerlerine her seviyede +%18 hasar ve −%6 bekleme süresi eklenir. **E** satırı evrimleşmiş hâldir ve ustalık bonuslarını korur.
 
 ## 1. Cam Kırığı (Glass Shards), `glass`
 En yakın düşmana keskin kırık fırlatır.
@@ -94,7 +94,7 @@ Oyuncunun baktığı yöne koni şeklinde su püskürtür (0.15 sn'de bir hasar,
 | 5 | 11 | 6.5 | 0.45 | 1.3 | 0.9, arkaya da püskürtür |
 | E | 15 | 7.5 | 0.42 | sürekli, dönen 4 fıskiye |
 ## Evrimler
-Koşul: silah **Sv.5** + eşleşen pasif (herhangi bir seviye) + oyun süresi **5:00 sonrası** (mini boss'tan sonra). Hazır evrim, seviye atlama ya da ödül sandığı ekranında **her zaman ilk kart** olarak çıkar.
+Koşul: silah **Sv.8** + eşleşen pasif (herhangi bir seviye) + oyun süresi **5:00 sonrası** (mini boss'tan sonra). Pasif yuvaları dolu olduğu için partner hiç alınamıyorsa, Sv.8 tek başına yeterlidir (evrim kilitlenmesin diye). Hazır evrim, seviye atlama ya da ödül sandığı ekranında **her zaman ilk kart** olarak çıkar.
 
 | Silah | + Pasif | Evrim |
 |---|---|---|

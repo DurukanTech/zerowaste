@@ -15,7 +15,7 @@ var _storm_t := 0.0
 
 
 func tick(delta: float) -> void:
-	var s: Array = STATS[level - 1]
+	var s: Array = row(STATS, 1, 3)
 	timer -= delta
 	if timer <= 0.0:
 		var target = game.nearest_enemy(player.position, 17.0)

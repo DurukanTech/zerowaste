@@ -554,11 +554,11 @@ func _refresh_build(p) -> void:
 	var wl := {}
 	for w in p.weapons:
 		wl[w.id] = w.level
-	_build_box.add_child(_slot_row(wl, GameData.WEAPONS, GameData.MAX_WEAPONS))
-	_build_box.add_child(_slot_row(p.passives, GameData.PASSIVES, GameData.MAX_PASSIVES))
+	_build_box.add_child(_slot_row(wl, GameData.WEAPONS, GameData.MAX_WEAPONS, GameData.WEAPON_MAX))
+	_build_box.add_child(_slot_row(p.passives, GameData.PASSIVES, GameData.MAX_PASSIVES, GameData.PASSIVE_MAX))
 
 
-func _slot_row(owned: Dictionary, data: Dictionary, slots: int) -> Control:
+func _slot_row(owned: Dictionary, data: Dictionary, slots: int, max_lv: int) -> Control:
 	var h := UI.hbox(6)
 	h.alignment = BoxContainer.ALIGNMENT_BEGIN
 	var ids: Array = owned.keys()
@@ -568,17 +568,24 @@ func _slot_row(owned: Dictionary, data: Dictionary, slots: int) -> Control:
 			var id: String = ids[i]
 			var lv: int = owned[id]
 			var c: Color = data[id].color
-			if lv >= 6:
+			if lv > max_lv:
 				var tile := UI.icon_tile(id, UI.SUN, 40)
 				v.add_child(tile)
 				v.add_child(UI.chip(UI.SUN, Vector2(37, 4), 2))
 			else:
 				v.add_child(UI.icon_tile(id, c, 40))
-				v.add_child(UI.pips(lv, c, 5, Vector2(5, 4)))
+				v.add_child(_slot_pips(lv, c, max_lv))
 		else:
 			v.add_child(UI.icon_tile("", Color.WHITE, 40, true))
 			v.add_child(UI.gap(4))
 		h.add_child(v)
+	return h
+
+
+## Tiny level pips that fit under a 40px slot tile.
+func _slot_pips(lv: int, c: Color, max_lv: int) -> HBoxContainer:
+	var h := UI.pips(lv, c, max_lv, Vector2(3 if max_lv > 5 else 5, 4))
+	h.add_theme_constant_override("separation", 2 if max_lv > 5 else 3)
 	return h
 
 

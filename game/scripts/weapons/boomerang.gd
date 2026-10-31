@@ -16,7 +16,7 @@ var _recent := {}
 
 
 func tick(delta: float) -> void:
-	var s: Array = STATS[level - 1]
+	var s: Array = row(STATS, 1, 3)
 	if evolved:
 		_tick_orbit(delta, s)
 		return

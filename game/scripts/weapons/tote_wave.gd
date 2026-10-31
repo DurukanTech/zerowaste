@@ -6,7 +6,7 @@ const STATS := [[4.5, 14.0, 3.2, 10.0], [5.0, 18.0, 3.0, 11.0], [5.5, 24.0, 2.8,
 
 
 func tick(delta: float) -> void:
-	var s: Array = STATS[level - 1]
+	var s: Array = row(STATS, 1, 2)
 	timer -= delta
 	if timer > 0.0:
 		return

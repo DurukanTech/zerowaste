@@ -160,7 +160,12 @@ func _card(i: int, c: Dictionary) -> Button:
 		"weapon":
 			var d: Dictionary = GameData.WEAPONS[c.id]
 			name_txt = Loc.pick(d.name)
-			desc = Loc.pick(d.desc) if c.level == 1 else Loc.pick(d.up[c.level - 2])
+			if c.level == 1:
+				desc = Loc.pick(d.desc)
+			elif c.level <= 5:
+				desc = Loc.pick(d.up[c.level - 2])
+			else:
+				desc = Loc.t("weapon_mastery")
 			fact = GameData.fact_text(d.fact)
 			kind_txt = Loc.t("weapon")
 			color = d.color
@@ -181,6 +186,14 @@ func _card(i: int, c: Dictionary) -> Button:
 			kind_txt = Loc.t("evolution")
 			color = UI.SUN
 			icon = c.id
+		"stat":
+			var d: Dictionary = GameData.STAT_CARDS[c.id]
+			name_txt = Loc.pick(d.name)
+			desc = Loc.pick(d.desc)
+			fact = GameData.random_fact()
+			kind_txt = Loc.t("stat_card")
+			color = d.color
+			icon = d.icon
 		_:
 			name_txt = Loc.t("heal_name")
 			desc = Loc.t("heal_desc")
@@ -250,12 +263,15 @@ func _card(i: int, c: Dictionary) -> Button:
 		var pid: String = GameData.EVOLUTIONS[c.id].passive
 		combo.add_child(UI.icon_tile(pid, GameData.PASSIVES[pid].color, 26))
 		tv.add_child(combo)
+	elif c.kind == "stat":
+		tags.add_child(UI.pill("×%d" % c.level, UI.MINT, 12))
 	elif c.kind != "heal":
 		if c.level == 1:
 			tags.add_child(UI.pill(Loc.t("new"), UI.SUN, 12))
 		else:
 			tags.add_child(UI.pill("%s %d" % [Loc.t("lv"), c.level], UI.MINT, 12))
-		tv.add_child(UI.pips(c.level, color, 5, Vector2(22, 7)))
+		var max_lv: int = GameData.WEAPON_MAX if c.kind == "weapon" else GameData.PASSIVE_MAX
+		tv.add_child(UI.pips(c.level, color, max_lv, Vector2(14 if max_lv > 5 else 22, 7)))
 	# key hint in the corner
 	var key := UI.label(str(i + 1), 18, Color(1, 1, 1, 0.75), 0)
 	key.add_theme_font_override("font", UI.font(0.6, 0))

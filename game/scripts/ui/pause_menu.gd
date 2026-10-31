@@ -83,9 +83,9 @@ func _build() -> void:
 	for w in game.player.weapons:
 		if w.evolved:
 			var evo: Dictionary = GameData.EVOLUTIONS[w.id]
-			v.add_child(_item(w.id, {"name": evo.name, "color": UI.SUN}, 5, Loc.t("evolution")))
+			v.add_child(_item(w.id, {"name": evo.name, "color": UI.SUN}, GameData.WEAPON_MAX, Loc.t("evolution"), GameData.WEAPON_MAX))
 		else:
-			v.add_child(_item(w.id, GameData.WEAPONS[w.id], w.level))
+			v.add_child(_item(w.id, GameData.WEAPONS[w.id], w.level, "", GameData.WEAPON_MAX))
 	if not game.player.passives.is_empty():
 		v.add_child(UI.gap(4))
 		for id in game.player.passives:
@@ -123,7 +123,7 @@ func _heading(text: String) -> Label:
 	return l
 
 
-func _item(id: String, d: Dictionary, level: int, tag := "") -> Control:
+func _item(id: String, d: Dictionary, level: int, tag := "", max_lv := 5) -> Control:
 	var h := UI.hbox(12)
 	h.alignment = BoxContainer.ALIGNMENT_BEGIN
 	h.add_child(UI.icon_tile(id, d.color, 40))
@@ -133,6 +133,6 @@ func _item(id: String, d: Dictionary, level: int, tag := "") -> Control:
 	var nl := UI.label(Loc.pick(d.name), 17, Color.WHITE, 0)
 	nl.add_theme_font_override("font", UI.font(0.4, 0))
 	v.add_child(nl)
-	v.add_child(UI.pips(level, d.color, 5, Vector2(18, 5)))
+	v.add_child(UI.pips(level, d.color, max_lv, Vector2(12 if max_lv > 5 else 18, 5)))
 	h.add_child(UI.label(tag if tag != "" else "%s %d" % [Loc.t("lv"), level], 15, d.color.lightened(0.3), 0))
 	return h

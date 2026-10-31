@@ -7,7 +7,7 @@ tags: [mekanik, denge]
 - Doğma hızı: `1.2 + dk × 1.6 + dk² × 0.06` düşman/sn
 - Aynı anda maks.: `min(60 + dk × 32, 320)`, Web build'de sınır 220
 - Düşmanlar oyuncudan 24–28 birim uzakta (ekran dışında) doğar. 45 birimden uzağa düşen düşman, oyuncunun önüne yeniden konumlanır.
-- 1:30'dan sonra doğumların küçük bir kısmı **elit** olur ([[Düşmanlar]]).
+- 1:30'dan itibaren 75 sn'de bir planlı **elit** gelir ([[Düşmanlar]]).
 
 | Zaman | Olay | Havuz |
 |---|---|---|

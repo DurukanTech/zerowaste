@@ -72,7 +72,7 @@ func text() -> String:
 func _complete() -> void:
 	completed += 1
 	game.player.add_ult(25.0)
-	game.give_chest()
+	game.give_chest("quest")
 	game.hud.toast(Loc.t("quest_done"), Color(0.62, 1.0, 0.7))
 	Sfx.play("levelup", -6)
 	_end()

@@ -25,7 +25,7 @@ func _on_level() -> void:
 		p.direction = Vector3(0, 0.12, 1)
 		add_child(p)
 		_jets.append(p)
-	var s: Array = STATS[level - 1]
+	var s: Array = row(STATS, 0, 3)
 	for p in _jets:
 		p.spread = rad_to_deg(s[2]) * 0.8
 		p.initial_velocity_min = s[1] * 2.2
@@ -45,7 +45,7 @@ func _jet_angle(i: int) -> float:
 
 
 func tick(delta: float) -> void:
-	var s: Array = STATS[level - 1]
+	var s: Array = row(STATS, 0, 3)
 	_spin += delta * 1.8
 	if evolved:
 		_spray = 1.0

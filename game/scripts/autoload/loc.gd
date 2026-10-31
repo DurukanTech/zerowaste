@@ -106,6 +106,9 @@ const STRINGS := {
 	"evolved": {"tr": "EVRİMLEŞTİ:", "en": "EVOLVED:"},
 	"reroll": {"tr": "YENİLE", "en": "REROLL"},
 	"slots_full": {"tr": "Yuva dolu", "en": "Slots full"},
+	"weapon_mastery": {"tr": "+%18 hasar, -%6 bekleme süresi", "en": "+18% damage, -6% cooldown"},
+	"stat_card": {"tr": "GELİŞİM", "en": "BOOST"},
+	"elite_spawn": {"tr": "ELİT ATIK GELDİ! Yen, ödül sandığını kap!", "en": "AN ELITE APPEARS! Beat it for a reward crate!"},
 	# meta
 	"upgrades": {"tr": "GELİŞTİRMELER", "en": "UPGRADES"},
 	"points": {"tr": "Geri Dönüşüm Puanı", "en": "Recycling Points"},

@@ -47,7 +47,7 @@ static func _leaf_mesh() -> Mesh:
 
 
 func tick(delta: float) -> void:
-	var s: Array = STATS[level - 1]
+	var s: Array = row(STATS, 1, 2)
 	timer -= delta
 	if timer <= 0.0 and _trees.size() < s[0]:
 		timer = cd(PLANT_CD)

@@ -10,7 +10,7 @@ const STATS := [[1, 25.0, 2.2, 1.4], [2, 25.0, 2.0, 1.4], [2, 35.0, 1.8, 1.6], [
 
 
 func tick(delta: float) -> void:
-	var s: Array = STATS[level - 1]
+	var s: Array = row(STATS, 1, 2)
 	_tick_patches(delta)
 	timer -= delta
 	if timer > 0.0:

@@ -36,14 +36,14 @@ func _on_level() -> void:
 		_motes.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 		add_child(_motes)
 		_motes.emitting = true
-	var r: float = area(STATS[level - 1][0])
+	var r: float = area(row(STATS, 1, 2)[0])
 	_field.scale = Vector3(r, 1, r)
 	_leaves.scale = Vector3(r, 1, r)
 	_motes.emission_sphere_radius = r * 0.8
 
 
 func tick(delta: float) -> void:
-	var s: Array = STATS[level - 1]
+	var s: Array = row(STATS, 1, 2)
 	position = Vector3(player.position.x, 0.04, player.position.z)
 	_leaves.rotation.y += delta * 1.2
 	_pulse = maxf(0.0, _pulse - delta * 3.0)

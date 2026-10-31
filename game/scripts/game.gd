@@ -52,12 +52,21 @@ var pause_ui
 var end_ui
 
 var _spawn_acc := 0.0
+var _next_elite := 90.0
+const ELITE_EVERY := 75.0
 var _shake := 0.0
 var _dmg_labels: Array[Label3D] = []
 var _dmg_tweens: Array = []
 var _dmg_next := 0
 var _first_pickup_hint := true
 var _first_ewaste_hint := true
+# autotest balance counters
+var stat_chests := {}
+var stat_elites := 0
+var stat_pool_empty := -1.0
+var _stat_k := 0
+var stat_taken := 0.0
+var _stat_one := 0
 
 # Headless soak test: `godot --headless --fixed-fps 60 res://scenes/game.tscn -- --autotest`
 var autotest := false
@@ -219,7 +228,7 @@ func _late_shots(dir: String, prev: float) -> void:
 	if prev <= 0.0:
 		elapsed = 380.0
 		for id in ["glass", "solar", "turbine", "boomerang", "compost", "tote"]:
-			for i in 5:
+			for i in GameData.WEAPON_MAX:
 				player.add_or_upgrade_weapon(id)
 		for id in ["efficiency", "awareness", "power"]:
 			player.add_or_upgrade_passive(id)
@@ -271,6 +280,10 @@ func _autotest_report(delta: float, ms: float) -> void:
 		_perf_real = now
 		print("[autotest] t=%s lv=%d enemies=%d gems=%d kills=%d logic_ms avg=%.2f worst=%.2f fps=%.0f weapons=%s" % [
 			int(elapsed), player.level, enemies.size(), gems.size(), kills, _perf_acc / _perf_frames, _perf_worst, fps, w])
+		print("[balance] t=%d passives=%s chests=%s elites_killed=%d pool_empty_at=%.0f oneshot=%d%% dmg_taken=%d" % [int(elapsed), player.passives, stat_chests, stat_elites, stat_pool_empty, 100 * _stat_one / maxi(1, _stat_k), int(stat_taken)])
+		stat_taken = 0.0
+		_stat_k = 0
+		_stat_one = 0
 		_perf_t = 0.0
 		_perf_acc = 0.0
 		_perf_frames = 0
@@ -310,7 +323,14 @@ func _spawn_logic(delta: float) -> void:
 				for i in 5:
 					spawn_enemy("foam", at + _rand_ring(1.5))
 			else:
-				spawn_enemy(kind, spawn_pos(), -1.0, m >= 1.5 and randf() < _elite_chance(m))
+				spawn_enemy(kind, spawn_pos())
+	if elapsed >= _next_elite and not boss_spawned:
+		_next_elite += ELITE_EVERY
+		var ek := _pick_kind(m)
+		if ek == "foam" or ek == "rot_small":
+			ek = "box"
+		spawn_enemy(ek, spawn_pos(), -1.0, true)
+		hud.banner(Loc.t("elite_spawn"), Color(1.0, 0.8, 0.3))
 
 
 func _pick_kind(m: float) -> String:
@@ -338,8 +358,23 @@ func _pick_kind(m: float) -> String:
 	return "bag"
 
 
-func _elite_chance(m: float) -> float:
-	return minf(0.006 + m * 0.0012, 0.018)
+## Enemy health multiplier: time curve that steepens after minute 5, times
+## an adaptive factor that follows how strong the player's build is.
+func hp_scale_at(m: float) -> float:
+	var late := maxf(0.0, m - 5.0)
+	return (1.0 + m * 0.28 + m * m * 0.012 + late * late * 0.12) * adapt_mult()
+
+
+func dmg_scale_at(m: float) -> float:
+	var late := maxf(0.0, m - 5.0)
+	return 1.0 + m * 0.08 + late * late * 0.03
+
+
+## Build power vs. what is expected at this point of the run (~4.5 cards/min).
+func adapt_mult() -> float:
+	var expected := 2.0 + 4.5 * elapsed / 60.0
+	var ratio: float = player.power_score() / expected
+	return clampf(1.0 + 0.7 * (ratio - 1.0), 0.85, 1.6)
 
 
 func spawn_pos() -> Vector3:
@@ -363,10 +398,15 @@ func spawn_ring(kind: String, count: int, r: float) -> void:
 func spawn_enemy(kind: String, pos: Vector3, hp_override := -1.0, elite := false):
 	var m := elapsed / 60.0
 	var e = Enemy.new()
-	var hp_scale := hp_override if hp_override > 0.0 else 1.0 + m * 0.28 + m * m * 0.012
-	if kind == "miniboss" or kind == "boss":
-		hp_scale = 1.0
-	e.setup(kind, hp_scale, 1.0 + m * 0.08, elite)
+	var hp_scale := hp_override if hp_override > 0.0 else hp_scale_at(m)
+	if kind == "miniboss":
+		hp_scale = clampf(player.power_score() / 24.0, 0.75, 1.4)
+	elif kind == "boss":
+		# sized to the build so the fight lasts about a minute either way
+		hp_scale = clampf(player.power_score() / 62.0, 0.7, 1.5)
+	e.setup(kind, hp_scale, dmg_scale_at(m), elite)
+	if autotest and e.is_boss:
+		print("[autotest] %s hp=%d power=%.0f" % [kind, e.max_hp, player.power_score()])
 	enemy_root.add_child(e)
 	e.position = clamp_arena(pos)
 	enemies.append(e)
@@ -522,7 +562,12 @@ func damage_enemy(e, amount: float, knock_dir := Vector3.ZERO, knock_force := 0.
 	if e.dead:
 		return
 	amount *= player.damage_mult()
+	var full_hp: bool = e.hp >= e.max_hp
 	e.hp -= amount
+	if e.hp <= 0.0 and not e.is_boss:
+		_stat_k += 1
+		if full_hp:
+			_stat_one += 1
 	e.hit_flash()
 	fx.hit(e.position)
 	if knock_force > 0.0:
@@ -561,6 +606,7 @@ func _kill(e) -> void:
 			fx.death(pos, GameData.MATERIALS[e.material_type].color)
 			spawn_gem(pos, e.material_type, float(e.xp))
 			if e.elite:
+				stat_elites += 1
 				spawn_gem(pos + _rand_ring(0.8), "chest", 0.0)
 				fx.big_burst(pos, Color(1.0, 0.8, 0.3), 24, false)
 			if e.kind == "rot":
@@ -589,7 +635,7 @@ func spawn_gem(pos: Vector3, mat_type: String, value: float) -> void:
 	if gems.size() >= MAX_GEMS:
 		var old = gems.pop_front()
 		if old.mat_type == "chest":
-			give_chest()
+			give_chest("elite")
 		player.add_xp(old.value)
 		old.queue_free()
 	var g = Gem.new()
@@ -627,7 +673,7 @@ func _collect(g) -> void:
 		player.heal(g.value)
 		Sfx.play("select", -4)
 	elif t == "chest":
-		give_chest()
+		give_chest("elite")
 	else:
 		player.add_xp(g.value)
 		Sfx.play("pickup", -16, 0.04)
@@ -665,11 +711,11 @@ func roll_choices() -> Array:
 	var full_p: bool = player.passives.size() >= GameData.MAX_PASSIVES
 	for id in GameData.WEAPONS:
 		var lv: int = player.weapon_level(id)
-		if lv < 5 and not (lv == 0 and full_w):
+		if lv < GameData.WEAPON_MAX and not player.is_evolved(id) and not (lv == 0 and full_w):
 			pool.append({"kind": "weapon", "id": id, "level": lv + 1, "w": 1.6 if lv > 0 else 1.0})
 	for id in GameData.PASSIVES:
 		var lv: int = player.plv(id)
-		if lv < 5 and not (lv == 0 and full_p):
+		if lv < GameData.PASSIVE_MAX and not (lv == 0 and full_p):
 			# partners of maxed weapons are more likely, to steer toward evolutions
 			var partner := false
 			for w in player.weapons:
@@ -687,8 +733,16 @@ func roll_choices() -> Array:
 				out.append(pool[i])
 				pool.remove_at(i)
 				break
+	# once the real cards run out, fill up with endless small boosts
+	var stats: Array = GameData.STAT_CARDS.keys()
+	stats.shuffle()
+	while out.size() < 3 and not stats.is_empty():
+		var sid: String = stats.pop_back()
+		out.append({"kind": "stat", "id": sid, "level": player.bn(sid) + 1})
 	if out.is_empty():
 		out.append({"kind": "heal", "id": "heal", "level": 0})
+		if stat_pool_empty < 0.0:
+			stat_pool_empty = elapsed
 	return out
 
 
@@ -697,14 +751,20 @@ func evolutions_ready() -> Array:
 	var out := []
 	if elapsed < GameData.EVOLVE_AFTER:
 		return out
+	var slots_full: bool = player.passives.size() >= GameData.MAX_PASSIVES
 	for w in player.weapons:
-		if w.level >= 5 and not w.evolved and player.plv(GameData.EVOLUTIONS[w.id].passive) > 0:
+		if w.level < GameData.WEAPON_MAX or w.evolved:
+			continue
+		# a full passive bar can't take the partner, so mastery alone unlocks it
+		if player.plv(GameData.EVOLUTIONS[w.id].passive) > 0 or slots_full:
 			out.append(w.id)
 	return out
 
 
 func apply_choice(c: Dictionary) -> void:
 	match c.kind:
+		"stat":
+			player.add_stat(c.id)
 		"evolve":
 			player.evolve_weapon(c.id)
 			hud.banner(Loc.t("evolved") + " " + Loc.upper(Loc.pick(GameData.EVOLUTIONS[c.id].name)), Color(1.0, 0.85, 0.35))
@@ -736,7 +796,8 @@ func on_player_revived() -> void:
 
 
 ## Reward crate: an extra upgrade pick without a level.
-func give_chest() -> void:
+func give_chest(src := "") -> void:
+	stat_chests[src] = stat_chests.get(src, 0) + 1
 	Sfx.play("levelup", -4)
 	fx.level_up(player.position)
 	level_ui.queue_level_up("chest")
