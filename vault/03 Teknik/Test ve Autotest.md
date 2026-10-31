@@ -18,9 +18,13 @@ $g = "C:\Users\cimih\Desktop\files\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-st
 & $g --fixed-fps 60 --path game res://scenes/game.tscn -- --autotest --shots=C:/klasor
 # model galerisi: tüm düşmanlar sabit + 1.7 sn'de tüm silahlar (showcase_16 / showcase_32.png)
 & $g --fixed-fps 60 --path game res://scenes/game.tscn -- --autotest --showcase --shots=C:/klasor
-# ana menü ekran görüntüsü
+# geç oyun: 6:20'ye atlar; evrim kartı, sel, ultimate, boss faz 2 (late_*.png)
+& $g --fixed-fps 60 --path game res://scenes/game.tscn -- --autotest --late --shots=C:/klasor
+# ana menü, Nasıl Oynanır ve Geliştirmeler ekranları
 & $g --path game -- --shots=C:/klasor
 ```
+
+Autotest pilotu her 3 sn'de bir atılır, ultimate dolunca hemen kullanır, e-atık taşıyorsa E-Atık Noktası'na yürür. Hazır evrim kartını her zaman seçer. Kalıcı yükseltmeleri yok sayar ve puan kaydetmez. Pilot boss mekaniklerinden kaçmaya çalışmaz; ölümsüz olduğu için zorluğu değil, akışı ve performansı ölçer.
 
 ## Sonuçlar (2026-10-31)
 | Ölçüm | Değer |
@@ -38,6 +42,19 @@ $g = "C:\Users\cimih\Desktop\files\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-st
 | FPS (V-sync kapalı, 1280×720, bu bilgisayar) | Başta ~220, 3. dk'dan sonra 100–150, en düşük 95 (630. sn) |
 | En kalabalık an | 277 düşman + ~390 malzeme, 107 FPS |
 | Hata | Yok |
+
+## Mekanik overhaul sonrası, headless (2026-10-31)
+| Ölçüm | Run A (boss 16000 can) | Run B (boss 11000 can) |
+|---|---|---|
+| Script hatası | Yok | Yok |
+| Mini boss | 5:00'te doğdu, 71 sn'de öldü (can 2400) | 45 sn'de öldü (can 1800) |
+| Final boss | 138 sn | 29 sn (güçlü build, 4 evrim) |
+| 10:00'da seviye | 40 | 44 |
+| Görev / e-atık teslimi | — | 7 / 61 |
+| Kazanılan puan | — | 1447 |
+| Oyun mantığı | Ort. 1–2.5 ms | Ort. 1–3 ms |
+
+Final boss canı iki run arasında bir değer olarak **14000** yapıldı. Evrimlerin ilk denemede 2:00'de gelmesi üzerine 5:00 kilidi eklendi.
 
 > [!note] Kare hızını en çok etkileyen şey ekrandaki malzeme sayısı (her biri 1 draw call). Gerekirse malzemeler MultiMesh'e taşınabilir.
 

@@ -2,7 +2,7 @@ extends "res://scripts/weapons/weapon.gd"
 ## Fires glass shards at the nearest enemy.
 
 # count, damage, pierce, cooldown
-const STATS := [[1, 9.0, 1, 0.9], [2, 9.0, 1, 0.9], [2, 9.0, 2, 0.85], [3, 13.0, 2, 0.8], [3, 13.0, 3, 0.6]]
+const STATS := [[1, 9.0, 1, 0.9], [2, 9.0, 1, 0.9], [2, 9.0, 2, 0.85], [3, 13.0, 2, 0.8], [3, 13.0, 3, 0.6], [5, 18.0, 5, 0.45]]
 const SPEED := 20.0
 const LIFE := 1.1
 
@@ -11,6 +11,7 @@ const ModelBuilder = preload("res://scripts/model_builder.gd")
 static var _shard: Mesh
 
 var _shots: Array = []
+var _storm_t := 0.0
 
 
 func tick(delta: float) -> void:
@@ -27,6 +28,13 @@ func tick(delta: float) -> void:
 			Sfx.play("shoot", -10, 0.06)
 		else:
 			timer = 0.1
+	if evolved:
+		# Glass Storm: periodic piercing ring in every direction
+		_storm_t -= delta
+		if _storm_t <= 0.0:
+			_storm_t = cd(1.4)
+			for k in 14:
+				_fire(Vector3.FORWARD.rotated(Vector3.UP, k * TAU / 14.0 + randf() * 0.2), s)
 	for i in range(_shots.size() - 1, -1, -1):
 		var sh: Dictionary = _shots[i]
 		var node: Node3D = sh.node

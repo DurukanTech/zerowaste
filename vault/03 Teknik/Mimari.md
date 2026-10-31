@@ -16,8 +16,13 @@ project.godot
 scenes/        main_menu.tscn, game.tscn
 scripts/
   autoload/    loc.gd (TR/EN), game_data.gd (tüm veri + input map), sfx.gd
-  game.gd      dünya, spawn, düşman yöneticisi, malzemeler, kutular, akış
-  player.gd    hareket, statlar, XP, bufflar
+  autoload/meta.gd  kalıcı puan + yükseltmeler (user://save.json)
+  game.gd      run kontrolü: spawn, düşman yöneticisi, malzemeler, ultimate, akış
+  sorting.gd   kutular, teslim, kombo serisi, E-Atık Noktası
+  quests.gd    run içi görevler ve ödül sandıkları
+  events.gd    zaman çizelgesi + harita olayları (plastik yağmuru, sel, hava kirliliği)
+  hazards.gd   düşman mermileri (havuzlu) ve uyarılı zemin darbeleri
+  player.gd    hareket, atılma, ultimate barı, statlar, XP, bufflar, dirilme
   enemy.gd     düşman verisi + görsel + boss davranışı
   gem.gd       malzeme pickup
   recycle_bin.gd
@@ -30,8 +35,11 @@ scripts/
                    40 m'lik chunk'lara birleştirilmiş dekor, MultiMesh çim, ışık + glow ayarları
   menu_backdrop.gd ana menünün canlı 3D arka planı (dönen kamera, kahraman, kutular, canavarlar)
   main_menu.gd     sol menü kolonu, sağda ayrıştırma ve "Biliyor muydun?" kartları, Nasıl Oynanır penceresi
-  weapons/     weapon.gd (base) + 6 silah
-  ui/          ui_kit.gd, hud.gd, level_up.gd, pause_menu.gd, end_screen.gd
+  weapons/     weapon.gd (base, Sv.1-5 + evolve() ile Sv.6) + 8 silah
+  ui/          ui_kit.gd (ortak palet, kart, pill, ikon kutusu, menü butonu, pop_in animasyonu),
+               icons.gd (kodla çizilen vektör ikonlar: silahlar, pasifler, bufflar),
+               bar.gd (yuvarlak bar: yumuşak dolum, hasar "hayalet" izi, parlama),
+               hud.gd, level_up.gd, pause_menu.gd, end_screen.gd
 ```
 
 ## Performans Kararları

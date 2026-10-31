@@ -11,10 +11,16 @@ const WEAPON_SCRIPTS := {
 	"turbine": preload("res://scripts/weapons/wind_turbine.gd"),
 	"solar": preload("res://scripts/weapons/solar_beam.gd"),
 	"tote": preload("res://scripts/weapons/tote_wave.gd"),
+	"tree": preload("res://scripts/weapons/tree_planter.gd"),
+	"water": preload("res://scripts/weapons/water_jet.gd"),
 }
 const RADIUS := 0.45
 const BASE_SPEED := 6.5
 const BASE_PICKUP := 2.6
+const DASH_SPEED := 24.0
+const DASH_TIME := 0.17
+const DASH_CD := 1.6
+const ULT_MAX := 100.0
 
 const SUIT := Color(0.16, 0.58, 0.36)
 const VEST := Color(0.98, 0.8, 0.12)
@@ -33,6 +39,10 @@ var passives := {}
 var buffs := {}  # buff id -> seconds left
 var facing := 0.0
 var moving := false
+var ult := 0.0
+var dash_cd := 0.0
+var rerolls := 0
+var revives := 0
 
 var _body: Node3D
 var _head: Node3D
@@ -45,9 +55,18 @@ var _dust: CPUParticles3D
 var _hurt_flash := 0.0
 var _walk_t := 0.0
 var _idle_t := 0.0
+var _dash_t := 0.0
+var _dash_dir := Vector3.ZERO
+var _iframes := 0.0
+var _bot_t := 0.0
 
 
 func _ready() -> void:
+	if game != null:
+		max_hp += 10.0 * meta("hp")
+		hp = max_hp
+		rerolls = meta("reroll")
+		revives = meta("revive")
 	_build_parts()
 	_body = Node3D.new()
 	add_child(_body)
@@ -140,17 +159,32 @@ static func _build_parts() -> void:
 
 func tick(delta: float) -> void:
 	var inp := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	var want_dash := Input.is_action_just_pressed("dash")
+	var want_ult := Input.is_action_just_pressed("ultimate")
 	if game.autotest and not game.showcase:
-		# wander towards the bin that matches the most carried material
-		var best = null
-		for b in game.bins:
-			if best == null or game.carried[b.mat_type] > game.carried[best.mat_type]:
-				best = b
-		var to: Vector3 = best.position - position
-		inp = Vector2(to.x, to.z).normalized() if to.length() > 1.0 else Vector2.RIGHT
+		inp = _bot_input()
+		_bot_t += delta
+		want_dash = _bot_t > 3.0
+		if want_dash:
+			_bot_t = 0.0
+		want_ult = true
 	var v := Vector3(inp.x, 0, inp.y)
 	moving = v.length() > 0.1
-	position += v * speed() * delta
+	dash_cd = maxf(0.0, dash_cd - delta)
+	_iframes = maxf(0.0, _iframes - delta)
+	if want_dash and dash_cd <= 0.0 and _dash_t <= 0.0:
+		_start_dash(v.normalized() if moving else Vector3(sin(facing), 0, cos(facing)))
+	if want_ult and ult >= ULT_MAX:
+		ult = 0.0
+		game.ultimate_blast()
+	if _dash_t > 0.0:
+		_dash_t -= delta
+		position += _dash_dir * DASH_SPEED * delta
+		_body.scale = Vector3(0.85, 0.9, 1.3)
+		if _dash_t <= 0.0:
+			_body.scale = Vector3.ONE
+	else:
+		position += v * speed() * delta
 	position.x = clampf(position.x, -GameData.ARENA_X, GameData.ARENA_X)
 	position.z = clampf(position.z, GameData.ARENA_Z_MIN, GameData.ARENA_Z_MAX)
 	if moving:
@@ -169,6 +203,35 @@ func tick(delta: float) -> void:
 		if _hurt_flash <= 0.0:
 			for i in _body_meshes.size():
 				_body_meshes[i].material_override = _orig[i]
+	# blink while invulnerable (after a revive)
+	_body.visible = _iframes <= 0.35 or int(_iframes * 14.0) % 2 == 0
+
+
+## Autotest pilot: walk to the fullest bin, or to the e-waste point when it is up.
+func _bot_input() -> Vector2:
+	var target: Vector3 = position
+	var best = null
+	for b in game.bins:
+		if best == null or game.carried[b.mat_type] > game.carried[best.mat_type]:
+			best = b
+	target = best.position
+	var ep = game.sorting.ewaste_point
+	if ep != null and game.sorting.ewaste_carried > 0:
+		target = ep.position
+	var to: Vector3 = target - position
+	return Vector2(to.x, to.z).normalized() if to.length() > 1.0 else Vector2.RIGHT
+
+
+func _start_dash(dir: Vector3) -> void:
+	_dash_dir = dir
+	_dash_t = DASH_TIME
+	dash_cd = DASH_CD * (1.0 - 0.12 * meta("dash"))
+	_iframes = maxf(_iframes, DASH_TIME + 0.12)
+	facing = atan2(dir.x, dir.z)
+	var from := position
+	var to := position + dir * DASH_SPEED * DASH_TIME
+	game.fx.streak(from, to, Color(0.55, 1.0, 0.7))
+	Sfx.play("whoosh", -6, 0.05)
 
 
 ## Walk cycle / idle breathing. Also used by the menu backdrop.
@@ -203,12 +266,40 @@ func plv(id: String) -> int:
 	return passives.get(id, 0)
 
 
+## Bought menu upgrades (ignored by the autotest so it stays comparable).
+func meta(id: String) -> int:
+	if game == null or game.autotest:
+		return 0
+	return Meta.lv(id)
+
+
 func speed() -> float:
-	return BASE_SPEED * (1.0 + 0.1 * plv("bike")) * (1.3 if buffs.has("speed") else 1.0)
+	var flood: float = game.events.player_speed_mult() if game != null and game.events != null else 1.0
+	return BASE_SPEED * (1.0 + 0.1 * plv("bike") + 0.04 * meta("speed")) * (1.3 if buffs.has("speed") else 1.0) * flood
 
 
 func damage_mult() -> float:
-	return (1.0 + 0.1 * plv("power")) * (1.4 if buffs.has("damage") else 1.0)
+	return (1.0 + 0.1 * plv("power") + 0.05 * meta("dmg")) * (1.4 if buffs.has("damage") else 1.0)
+
+
+func area_mult() -> float:
+	return 1.0 + 0.1 * plv("seeds")
+
+
+func armor_mult() -> float:
+	return 1.0 - 0.07 * plv("repair")
+
+
+func carry_cap() -> int:
+	return GameData.CARRY_CAP + 5 * meta("carry")
+
+
+func add_ult(amount: float) -> void:
+	ult = minf(ULT_MAX, ult + amount * (1.0 + 0.15 * meta("ult")))
+
+
+func is_dashing() -> bool:
+	return _dash_t > 0.0
 
 
 func cooldown_mult() -> float:
@@ -216,18 +307,20 @@ func cooldown_mult() -> float:
 
 
 func pickup_radius() -> float:
-	return BASE_PICKUP * (1.0 + 0.3 * plv("net"))
+	return BASE_PICKUP * (1.0 + 0.3 * plv("net") + 0.12 * meta("pickup"))
 
 
 func xp_mult() -> float:
-	return 1.0 + 0.1 * plv("awareness")
+	return 1.0 + 0.1 * plv("awareness") + 0.06 * meta("xp")
 
 
 # --- health / xp -----------------------------------------------------------
 
 func hurt(amount: float) -> void:
-	if game.finished or amount <= 0.0:
+	if game.finished or amount <= 0.0 or _iframes > 0.0:
 		return
+	amount *= armor_mult()
+	game.on_player_hurt()
 	hp -= amount
 	if _hurt_flash <= 0.0:
 		var red := MF.mat(Color(1, 0.25, 0.2), 1.0)
@@ -238,6 +331,12 @@ func hurt(amount: float) -> void:
 	game.add_shake(0.15)
 	game.hud.hurt_flash()
 	if hp <= 0.0:
+		if revives > 0:
+			revives -= 1
+			hp = max_hp * 0.5
+			_iframes = 2.5
+			game.on_player_revived()
+			return
 		hp = 0.0
 		game.on_player_died()
 
@@ -251,7 +350,7 @@ func add_xp(amount: float) -> void:
 	while xp >= xp_need:
 		xp -= xp_need
 		level += 1
-		xp_need = 5.0 + (level - 1) * 8.0 + pow(level - 1, 1.9)
+		xp_need = 6.0 + (level - 1) * 9.0 + pow(level - 1, 1.95)
 		game.on_level_up()
 
 
@@ -273,6 +372,8 @@ func add_or_upgrade_weapon(id: String) -> void:
 		if w.id == id:
 			w.upgrade()
 			return
+	if weapons.size() >= GameData.MAX_WEAPONS:
+		return
 	var w = WEAPON_SCRIPTS[id].new()
 	w.id = id
 	game.weapon_root.add_child(w)
@@ -285,3 +386,16 @@ func add_or_upgrade_passive(id: String) -> void:
 	if id == "canteen":
 		max_hp += 20.0
 		hp += 20.0
+
+
+func evolve_weapon(id: String) -> void:
+	for w in weapons:
+		if w.id == id:
+			w.evolve()
+
+
+func is_evolved(id: String) -> bool:
+	for w in weapons:
+		if w.id == id:
+			return w.evolved
+	return false

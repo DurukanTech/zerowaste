@@ -96,7 +96,7 @@ void fragment() {
 """
 
 
-static func setup_environment(parent: Node3D, golden := false) -> void:
+static func setup_environment(parent: Node3D, golden := false) -> Environment:
 	var we := WorldEnvironment.new()
 	var env := Environment.new()
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -156,6 +156,7 @@ static func setup_environment(parent: Node3D, golden := false) -> void:
 	parent.add_child(we)
 	parent.add_child(sun)
 	parent.add_child(fill)
+	return env
 
 
 static func build_arena(parent: Node3D, clear := Vector3.INF, clear_r := 0.0) -> void:

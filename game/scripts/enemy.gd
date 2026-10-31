@@ -4,6 +4,7 @@ extends Node3D
 
 const MF = preload("res://scripts/mesh_factory.gd")
 const Models = preload("res://scripts/enemy_models.gd")
+const Fx = preload("res://scripts/fx.gd")
 
 var kind := ""
 var hp := 1.0
@@ -17,6 +18,8 @@ var radius := 0.5
 var knock_resist := 1.0
 var knock := Vector3.ZERO
 var is_boss := false
+var elite := false
+var phase := 1
 var dead := false
 var slow_t := 0.0
 var move_override = null  # Vector3 while charging
@@ -36,9 +39,11 @@ var _special_t := 0.0
 var _charge_state := 0  # 0 chase, 1 telegraph, 2 charge
 var _charge_t := 0.0
 var _charge_dir := Vector3.ZERO
+var _spiral_t := 3.0
+var _slam_t := 2.0
 
 
-func setup(k: String, hp_scale: float, dmg_scale: float) -> void:
+func setup(k: String, hp_scale: float, dmg_scale: float, is_elite := false) -> void:
 	kind = k
 	var d: Dictionary = GameData.ENEMIES[k]
 	max_hp = d.hp * hp_scale
@@ -51,11 +56,37 @@ func setup(k: String, hp_scale: float, dmg_scale: float) -> void:
 	knock_resist = d.knock
 	is_boss = k == "miniboss" or k == "boss"
 	_anim_t = randf() * TAU
-	_special_t = 2.0
+	_special_t = 2.0 if k != "spray" else randf_range(1.5, 3.0)
 	_charge_t = 4.0
 	_body = Node3D.new()
 	add_child(_body)
 	_build_visual()
+	if is_elite and not is_boss:
+		_make_elite()
+
+
+## Elite variant: much tougher, bigger, golden aura, drops a reward crate.
+func _make_elite() -> void:
+	elite = true
+	max_hp *= GameData.ELITE_HP
+	hp = max_hp
+	damage *= GameData.ELITE_DMG
+	xp *= 4
+	radius *= 1.3
+	knock_resist *= 0.4
+	speed *= 1.1
+	_base_scale *= GameData.ELITE_SCALE
+	_body.scale = Vector3.ONE * _base_scale
+	Fx.ground(self, {"color": Color(1.0, 0.8, 0.25, 0.9), "inner": 0.7, "softness": 0.25, "dashes": 6.0, "spin": 3.0, "intensity": 1.6}, radius * 2.0, 0.05)
+	var sparks := Fx.burst(Color(1.0, 0.85, 0.35), 8, 0.9, Vector2(0.5, 1.5), 0.07, true, 1.5)
+	sparks.one_shot = false
+	sparks.explosiveness = 0.0
+	sparks.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	sparks.emission_sphere_radius = radius
+	sparks.position.y = 0.6
+	add_child(sparks)
+	# the enemy is not in the tree yet; world-space particles need a transform
+	sparks.set_deferred("emitting", true)
 
 
 func _add_model(parent: Node3D, model_kind: String, shadows := true) -> void:
@@ -137,6 +168,15 @@ func think(delta: float, game) -> void:
 		speed_mult = 1.0
 	_anim_t += delta
 	var s := _base_scale
+	if kind == "miniboss" or kind == "boss":
+		var p := 1
+		if kind == "boss":
+			p = 3 if hp < max_hp * 0.33 else (2 if hp < max_hp * 0.66 else 1)
+		elif hp < max_hp * 0.5:
+			p = 2
+		if p != phase:
+			phase = p
+			game.on_boss_phase(self)
 	match kind:
 		"bag":
 			_body.position.y = sin(_anim_t * 4.0) * 0.15 + 0.1
@@ -153,6 +193,16 @@ func think(delta: float, game) -> void:
 		"box":
 			_body.position.y = absf(sin(_anim_t * 5.0)) * 0.18
 			_body.rotation.z = sin(_anim_t * 5.0) * 0.06
+		"spray":
+			_spray_think(delta, game)
+		"foam":
+			# skittering zig-zag chase
+			_body.position.y = absf(sin(_anim_t * 14.0)) * 0.12
+			var to: Vector3 = game.player.position - position
+			to.y = 0.0
+			var dir := to.normalized()
+			var side := Vector3(-dir.z, 0, dir.x) * sin(_anim_t * 5.0) * 0.9
+			move_override = (dir + side).normalized() * speed * speed_mult
 		"miniboss":
 			_body.rotation.y = sin(_anim_t * 0.8) * 0.25
 			_body.scale = Vector3(1.0 + sin(_anim_t * 2.0) * 0.03, 1.0 - sin(_anim_t * 2.0) * 0.03, 1.0)
@@ -165,13 +215,69 @@ func think(delta: float, game) -> void:
 				for i in 4:
 					var a := randf() * TAU
 					game.spawn_enemy("bag", position + Vector3(cos(a), 0, sin(a)) * (radius + 1.0))
+			if phase >= 2:
+				# enraged: trash slams around the player + rings of junk
+				_charge_t -= delta
+				if _charge_t <= 0.0:
+					_charge_t = 4.0
+					for i in 3:
+						var off := Vector3(randf_range(-3.5, 3.5), 0, randf_range(-3.5, 3.5)) if i > 0 else Vector3.ZERO
+						game.hazards.slam(game.player.position + off, 2.2, 1.1, 16.0, Color(1.0, 0.55, 0.2))
+					game.hazards.ring(position, 12, 7.0, 10.0, Color(0.75, 0.6, 0.3), randf() * TAU)
 		"boss":
 			_boss_think(delta, game)
 
 
+## Ranged aerosol: keeps its distance, strafes and puffs toxic clouds.
+func _spray_think(delta: float, game) -> void:
+	var to: Vector3 = game.player.position - position
+	to.y = 0.0
+	var d := to.length()
+	var dir := to / maxf(d, 0.001)
+	var side := Vector3(-dir.z, 0, dir.x) * (1.0 if int(_anim_t * 0.3) % 2 == 0 else -1.0)
+	if d < 6.5:
+		move_override = (-dir * 0.8 + side * 0.4).normalized() * speed * speed_mult
+	elif d < 10.0:
+		move_override = side * speed * 0.6 * speed_mult
+	else:
+		move_override = null
+	_special_t -= delta
+	_body.rotation.z = sin(_anim_t * 7.0) * 0.08
+	if _special_t < 0.45:
+		# wind-up shake before a puff
+		_body.position.x = sin(_anim_t * 70.0) * 0.05
+	if _special_t <= 0.0:
+		_special_t = randf_range(2.4, 3.2)
+		_body.position.x = 0.0
+		if d < 16.0:
+			game.hazards.shoot(position + dir * 0.6, dir * 7.5, damage * 1.3, Color(0.7, 1.0, 0.3), 0.35)
+
+
 func _boss_think(delta: float, game) -> void:
-	var enraged := hp < max_hp * 0.5
+	var enraged := phase >= 3
 	speed_mult = 1.35 if enraged else 1.0
+	if phase >= 2:
+		# phase 2+: spirals of receipts and bills
+		_spiral_t -= delta
+		if _spiral_t <= 0.0:
+			_spiral_t = 4.5 if enraged else 5.5
+			for w in 3:
+				game.get_tree().create_timer(w * 0.35, false).timeout.connect(func():
+					if not dead:
+						game.hazards.ring(position, 14, 8.0, 12.0, Color(1.0, 0.85, 0.3), w * 0.22 + _anim_t))
+	if enraged:
+		# phase 3: a line of slams marching toward the player
+		_slam_t -= delta
+		if _slam_t <= 0.0:
+			_slam_t = 3.6
+			var to: Vector3 = game.player.position - position
+			to.y = 0.0
+			var dir := to.normalized()
+			for i in 5:
+				var at: Vector3 = position + dir * (3.0 + i * 2.6)
+				game.get_tree().create_timer(i * 0.12, false).timeout.connect(func():
+					if not dead:
+						game.hazards.slam(at, 1.9, 0.9, 20.0, Color(0.85, 0.35, 0.9)))
 	_special_t -= delta
 	if _special_t <= 0.0:
 		_special_t = 5.0

@@ -23,6 +23,8 @@ static func get_model(kind: String) -> Dictionary:
 			"rot", "rot_small": _rot(o)
 			"box": _box(o)
 			"battery": _battery(o, g)
+			"spray": _spray(o, g)
+			"foam": _foam(o)
 			"miniboss": _miniboss(o, g)
 			"boss": _boss(o, g)
 			"boss_arm_l": _boss_arm(o, Color(1.0, 0.75, 0.1), Color(0.85, 0.2, 0.2))
@@ -146,6 +148,40 @@ static func _battery(o, g) -> void:
 		_brow(o, Vector3(sx * 0.08, 0.5, 0.2), 0.09, -sx * 0.45)
 		o.cyl(0.045, 0.05, 0.17, Color(0.25, 0.25, 0.28), Vector3(sx * 0.09, 0.085, 0))
 	g.sphere(0.07, Color(1.0, 0.85, 0.3), Vector3(0.06, 0.9, 0), Vector3.ONE, Vector3.ZERO, 0)
+
+
+static func _spray(o, g) -> void:
+	var tin := Color(0.78, 0.8, 0.84)
+	o.cyl(0.24, 0.24, 0.8, Color(0.35, 0.3, 0.75), Vector3(0, 0.55, 0))
+	o.cyl(0.245, 0.245, 0.2, Color(0.95, 0.4, 0.75), Vector3(0, 0.55, 0))
+	o.sphere(0.24, tin, Vector3(0, 0.95, 0), Vector3(1, 0.45, 1))
+	o.cyl(0.24, 0.24, 0.05, tin, Vector3(0, 0.15, 0))
+	o.cyl(0.07, 0.07, 0.14, Color(0.2, 0.2, 0.22), Vector3(0, 1.1, 0))
+	o.box(Vector3(0.1, 0.06, 0.12), Color(0.95, 0.95, 0.95), Vector3(0, 1.18, 0.05))
+	# hazard label
+	o.prism(Vector3(0.2, 0.18, 0.02), Color(1.0, 0.8, 0.1), Vector3(0, 0.36, 0.24))
+	o.box(Vector3(0.025, 0.08, 0.02), BLACK, Vector3(0, 0.36, 0.255))
+	for sx in [-1.0, 1.0]:
+		_eye(o, Vector3(sx * 0.09, 0.7, 0.21), 0.065, Color(1.0, 0.85, 0.95))
+		_brow(o, Vector3(sx * 0.09, 0.8, 0.24), 0.1, -sx * 0.4)
+		o.cyl(0.05, 0.06, 0.15, Color(0.25, 0.25, 0.28), Vector3(sx * 0.1, 0.075, 0))
+	g.sphere(0.06, Color(0.75, 1.0, 0.3), Vector3(0, 1.18, 0.14), Vector3.ONE, Vector3.ZERO, 0)
+
+
+static func _foam(o) -> void:
+	var foam := Color(0.96, 0.97, 0.98)
+	var shade := Color(0.86, 0.88, 0.9)
+	# a clamshell food box with little foam beads
+	o.box(Vector3(0.6, 0.22, 0.5), foam, Vector3(0, 0.22, 0))
+	o.box(Vector3(0.6, 0.18, 0.5), shade, Vector3(0, 0.46, -0.12), Vector3(-0.55, 0, 0))
+	o.box(Vector3(0.5, 0.06, 0.04), Color(0.85, 0.2, 0.15), Vector3(0, 0.34, 0.25))
+	for i in 3:
+		o.prism(Vector3(0.08, 0.08, 0.03), WHITE, Vector3(-0.15 + i * 0.15, 0.3, 0.26), Vector3(0, 0, PI))
+	for i in 5:
+		var a := float(i) / 5.0 * TAU
+		o.sphere(0.06, foam, Vector3(cos(a) * 0.38, 0.1, sin(a) * 0.3), Vector3.ONE, Vector3.ZERO, 0)
+	for sx in [-1.0, 1.0]:
+		_eye(o, Vector3(sx * 0.13, 0.5, 0.12), 0.07)
 
 
 static func _miniboss(o, g) -> void:

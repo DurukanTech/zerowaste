@@ -31,6 +31,9 @@ etkinlik: COP31 Türkiye Game Hackathon
   - [[Pasif Yükseltmeler]]
   - [[Düşmanlar]]
   - [[Dalga Zaman Çizelgesi]]
+  - [[Yetenekler]]
+  - [[Görevler ve Olaylar]]
+  - [[Kalıcı Gelişim]]
 - **Teknik**
   - [[Mimari]]
   - [[Test ve Autotest]]

@@ -5,7 +5,7 @@ const ModelBuilder = preload("res://scripts/model_builder.gd")
 const Fx = preload("res://scripts/fx.gd")
 
 # radius, damage, tick interval
-const STATS := [[2.6, 5.0, 0.5], [3.0, 7.0, 0.5], [3.4, 9.0, 0.45], [3.8, 11.0, 0.4], [4.4, 14.0, 0.35]]
+const STATS := [[2.6, 5.0, 0.5], [3.0, 7.0, 0.5], [3.4, 9.0, 0.45], [3.8, 11.0, 0.4], [4.4, 14.0, 0.35], [5.8, 20.0, 0.3]]
 
 var _field: Node3D
 var _leaves: Node3D
@@ -36,7 +36,7 @@ func _on_level() -> void:
 		_motes.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 		add_child(_motes)
 		_motes.emitting = true
-	var r: float = STATS[level - 1][0]
+	var r: float = area(STATS[level - 1][0])
 	_field.scale = Vector3(r, 1, r)
 	_leaves.scale = Vector3(r, 1, r)
 	_motes.emission_sphere_radius = r * 0.8
@@ -51,10 +51,22 @@ func tick(delta: float) -> void:
 	timer -= delta
 	if timer <= 0.0:
 		timer = cd(s[2])
-		var hit := false
-		for e in game.enemies_near(player.position, s[0]):
+		var hits := 0
+		for e in game.enemies_near(player.position, area(s[0])):
 			e.slow_t = 0.6
 			game.damage_enemy(e, s[1])
-			hit = true
-		if hit:
+			hits += 1
+		if hits > 0:
 			_pulse = 1.0
+			if evolved:
+				# Living Soil: decomposed waste feeds the player
+				player.heal(minf(hits, 6) * 0.35)
+		if not is_equal_approx(_field.scale.x, area(s[0])):
+			_on_level()
+
+
+func _on_evolve() -> void:
+	var m: ShaderMaterial = _field.get_child(0).material_override
+	m.set_shader_parameter("color", Color(0.35, 0.85, 0.25, 0.42))
+	_pulse_mat.set_shader_parameter("color", Color(0.95, 1.0, 0.45, 0.95))
+	_motes.amount = 30

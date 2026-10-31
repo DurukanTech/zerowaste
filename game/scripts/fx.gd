@@ -201,3 +201,19 @@ func flash_light(pos: Vector3, color: Color, energy: float, time: float) -> void
 	var tw := l.create_tween()
 	tw.tween_property(l, "light_energy", 0.0, time)
 	tw.tween_callback(l.queue_free)
+
+
+## Fading glow streak along the ground (dash trail).
+func streak(from: Vector3, to: Vector3, color: Color) -> void:
+	var d := Vector3(to.x - from.x, 0, to.z - from.z)
+	var length := d.length()
+	if length < 0.01:
+		return
+	var mi := MF.inst(MF.box_mesh(Vector3(0.7, 0.05, 1.0)), MF.glow_mat(Color(color, 0.5), 2.0), self, Vector3.ZERO, false)
+	mi.position = (from + to) * 0.5 + Vector3(0, 0.7, 0)
+	mi.rotation.y = atan2(d.x, d.z)
+	mi.scale = Vector3(1, 1, length)
+	var tw := mi.create_tween()
+	tw.tween_property(mi, "scale", Vector3(0.05, 1, length), 0.3).set_ease(Tween.EASE_IN)
+	tw.tween_callback(mi.queue_free)
+	shockwave(from, color, 1.6, 0.25, 1.4)

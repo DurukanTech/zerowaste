@@ -5,7 +5,7 @@ const ModelBuilder = preload("res://scripts/model_builder.gd")
 const Fx = preload("res://scripts/fx.gd")
 
 # blades, damage, orbit radius, angular speed
-const STATS := [[2, 10.0, 3.0, 3.0], [3, 10.0, 3.0, 3.2], [3, 15.0, 3.2, 3.4], [4, 15.0, 3.4, 3.6], [5, 22.0, 3.8, 4.0]]
+const STATS := [[2, 10.0, 3.0, 3.0], [3, 10.0, 3.0, 3.2], [3, 15.0, 3.2, 3.4], [4, 15.0, 3.4, 3.6], [5, 22.0, 3.8, 4.0], [6, 28.0, 3.8, 4.2]]
 const HIT_COOLDOWN := 0.45
 
 static var _rotor: Mesh
@@ -34,7 +34,7 @@ func _on_level() -> void:
 	for b in _blades:
 		b.queue_free()
 	_blades.clear()
-	for i in STATS[level - 1][0]:
+	for i in STATS[level - 1][0] * (2 if evolved else 1):
 		var b := Node3D.new()
 		add_child(b)
 		MF.inst(_rotor_mesh(), MF.vc_mat(false, 0.4), b, Vector3.ZERO, false)
@@ -46,16 +46,21 @@ func tick(delta: float) -> void:
 	var s: Array = STATS[level - 1]
 	_angle += s[3] * delta
 	_orbit.position = Vector3(player.position.x, 0.06, player.position.z)
-	_orbit.scale = Vector3(s[2] + 0.4, 1, s[2] + 0.4)
+	var orbit_r := area(s[2])
+	_orbit.scale = Vector3(orbit_r + 0.4, 1, orbit_r + 0.4)
 	for e in _recent.keys():
 		_recent[e] -= delta
 		if _recent[e] <= 0.0:
 			_recent.erase(e)
-	var n := _blades.size()
-	for i in n:
-		var a := _angle + float(i) / n * TAU
+	# Wind Farm: a second, wider ring spins the other way
+	var n: int = s[0]
+	for i in _blades.size():
+		var outer := i >= n
+		var k := i % n
+		var a := (-_angle * 0.8 if outer else _angle) + float(k) / n * TAU
+		var r := orbit_r * (1.65 if outer else 1.0)
 		var b := _blades[i]
-		b.position = player.position + Vector3(cos(a) * s[2], 0.8, sin(a) * s[2])
+		b.position = player.position + Vector3(cos(a) * r, 0.8, sin(a) * r)
 		b.rotation.y += delta * 16.0
 		for e in game.enemies_near(b.position, 0.65):
 			if _recent.has(e):

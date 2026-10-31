@@ -4,7 +4,7 @@ tags: [mekanik, denge]
 
 # Düşmanlar
 
-Temas hasarı **saniye başına** uygulanır. Can, zamanla `×(1 + dk × 0.22)`, hasar da `×(1 + dk × 0.08)` ölçeklenir.
+Temas hasarı **saniye başına** uygulanır. Can, zamanla `×(1 + dk × 0.28 + dk² × 0.012)`, hasar da `×(1 + dk × 0.08)` ölçeklenir.
 
 | Düşman | ID | Can | Hız | Hasar/sn | XP | Malzeme | Özellik |
 |---|---|---|---|---|---|---|---|
@@ -14,18 +14,27 @@ Temas hasarı **saniye başına** uygulanır. Can, zamanla `×(1 + dk × 0.22)`,
 | Küçük Yığın | `rot_small` | 6 | 3.6 | 5 | 1 | Organik | |
 | Karton Canavar | `box` | 34 | 2.1 | 12 | 3 | Kağıt | Tank, geri itilmeye dirençli |
 | Pil Bombası | `battery` | 10 | 5.0 | 22 (tek sefer) | 3 | E-atık | Temas edince patlar, yanıp söner |
+| Sprey Kutusu | `spray` | 16 | 3.2 | 8 | 3 | E-atık | **Menzilli**: 6.5–10 birim mesafede durur, yana kayar, 2.4–3.2 sn'de bir zehirli bulut fırlatır (hasar ×1.3) |
+| Strafor Sürüsü | `foam` | 5 | 5.4 | 5 | 1 | Plastik | 5'li sürü hâlinde doğar, zikzak çizerek koşar |
+
+## Elit Düşmanlar
+- 1:30'dan sonra normal doğumların `%0.6 + dk × %0.12` kadarı (en fazla %1.8) elit olur.
+- Can ×7, hasar ×1.5, boyut ×1.45, hız ×1.1, XP ×4, geri itilmeye daha dirençli.
+- Altında dönen altın halka ve kıvılcımlar olur. Ölünce **ödül sandığı** düşürür.
 
 ## Bosslar
 ### Çöp Dağı (Trash Mountain), mini boss, 5:00
-- Can 750 (900'de autotest 62 sn sürdü, 750'de 43 sn), hız 1.9
+- Can 1800, hız 1.9
 - 3.5 sn'de bir etrafına 4 poşet çağırır
+- **Faz 2 (%50 altı, öfke):** 4 sn'de bir oyuncunun etrafına 3 uyarılı çöp darbesi (r 2.2, 1.1 sn uyarı, 16 hasar) ve 12 parçalık çöp halkası (hız 7, 10 hasar)
 - Ölünce 20 karışık malzeme ve 1 su matarası (can) bırakır
 
 ### Aşırı Tüketim Devi (Overconsumption Giant), final boss, 10:00
-- Can 5000, hız 2.3
-- 6 sn'de bir 0.8 sn kırmızı yanıp sönerek uyarır, ardından oyuncuya doğru **hücum** eder (hız 14, 0.7 sn)
-- 5 sn'de bir 6 minyon çağırır
-- Canı %50'nin altına düşünce daha hızlı hareket eder
+- Can 14000, hız 2.3
+- **Faz 1 (%100–66):** 6 sn'de bir 0.8 sn kırmızı yanıp sönerek uyarır, ardından oyuncuya doğru **hücum** eder (hız 14, 0.7 sn). 5 sn'de bir 6 minyon çağırır.
+- **Faz 2 (%66 altı, "Fatura yağmuru"):** 5.5 sn'de bir art arda 3 dalga, 14'er mermilik dönen fatura halkası (hız 8, 12 hasar)
+- **Faz 3 (%33 altı, "Çıldırma"):** ×1.35 hız, daha sık hücum (4.5 sn), 3.6 sn'de bir oyuncuya doğru ilerleyen 5 uyarılı darbe (r 1.9, 20 hasar), fatura halkaları 4.5 sn'de bir
+- Faz geçişlerinde ekranda uyarı yazısı ve sarsıntı olur; boss barında %66 ve %33 işaretleri var.
 - **Yenilirse oyun kazanılır**
 
 İlgili notlar: [[Dalga Zaman Çizelgesi]]

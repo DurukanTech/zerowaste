@@ -21,6 +21,7 @@ config/icon="res://icon.svg"
 Loc="*res://scripts/autoload/loc.gd"
 GameData="*res://scripts/autoload/game_data.gd"
 Sfx="*res://scripts/autoload/sfx.gd"
+Meta="*res://scripts/autoload/meta.gd"
 
 [display]
 

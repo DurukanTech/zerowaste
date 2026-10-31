@@ -4,16 +4,17 @@ extends Control
 const UI = preload("res://scripts/ui/ui_kit.gd")
 const Backdrop = preload("res://scripts/menu_backdrop.gd")
 
-const INK := Color(0.02, 0.09, 0.11)
-const MINT := Color(0.62, 1.0, 0.7)
-const SUN := Color(1.0, 0.84, 0.3)
-const MUTED := Color(0.7, 0.8, 0.8)
+const INK := UI.INK
+const MINT := UI.MINT
+const SUN := UI.SUN
+const MUTED := UI.MUTED
 const FACT_TIME := 8.0
 const PERKS := {"plastic": "perk_firerate", "paper": "perk_speed", "glass": "perk_damage", "organic": "perk_heal"}
 
 var _ui: Control
 var _fade: ColorRect
 var _how_open := false
+var _shop_open := false
 var _leaving := false
 var _t := 0.0
 var _fact_idx := 0
@@ -37,6 +38,7 @@ func _ready() -> void:
 	create_tween().tween_property(_fade, "color:a", 0.0, 0.8)
 	_fact_idx = randi() % GameData.FACTS.size()
 	Loc.language_changed.connect(_build.bind(false))
+	Meta.changed.connect(_build.bind(false))
 	_build(true)
 
 
@@ -51,8 +53,9 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if _how_open and (ev.is_action_pressed("pause") or ev.is_action_pressed("ui_cancel")):
-		_set_how(false)
+	if (_how_open or _shop_open) and (ev.is_action_pressed("pause") or ev.is_action_pressed("ui_cancel")):
+		_how_open = false
+		_set_shop(false)
 		get_viewport().set_input_as_handled()
 
 
@@ -70,15 +73,10 @@ func _build(intro := false) -> void:
 	_ui.add_child(right)
 	_ui.add_child(_lang_switch())
 
-	var credits := UI.label(Loc.t("credits"), 13, Color(1, 1, 1, 0.5), 0)
-	credits.anchor_top = 1.0
-	credits.anchor_bottom = 1.0
-	credits.offset_left = 72
-	credits.offset_top = -40
-	_ui.add_child(credits)
-
 	if _how_open:
 		_ui.add_child(_how_modal())
+	if _shop_open:
+		_ui.add_child(_shop_modal())
 	if intro:
 		_slide_in(left, -60.0, 0.15)
 		_slide_in(right, 60.0, 0.45)
@@ -112,45 +110,53 @@ func _left_column() -> VBoxContainer:
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.add_theme_constant_override("separation", 6)
 
-	# eyebrow: four bin-colored dots + spaced caption
+	# eyebrow: four bin-colored dots
 	var eyebrow := HBoxContainer.new()
 	eyebrow.add_theme_constant_override("separation", 6)
 	for t in GameData.BIN_TYPES:
-		eyebrow.add_child(_chip(GameData.MATERIALS[t].color, Vector2(10, 10), 5))
-	var cap := UI.label("  " + Loc.t("eyebrow"), 15, SUN, 0)
-	cap.add_theme_font_override("font", UI.font(0.3, 3))
-	eyebrow.add_child(cap)
+		eyebrow.add_child(UI.chip(GameData.MATERIALS[t].color, Vector2(10, 10), 5))
 	col.add_child(eyebrow)
 
 	var t1 := UI.label(Loc.t("title_1"), 92, MINT, 0)
 	t1.add_theme_font_override("font", UI.font(0.9, 1))
-	_shadow(t1, 6)
+	UI.shadow(t1, 6)
 	col.add_child(t1)
 	var t2 := UI.label(Loc.t("title_2"), 60, SUN, 0)
 	t2.add_theme_font_override("font", UI.font(0.8, 9))
-	_shadow(t2, 5)
+	UI.shadow(t2, 5)
 	col.add_child(t2)
 
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 6)
 	for t in GameData.BIN_TYPES:
-		bar.add_child(_chip(GameData.MATERIALS[t].color, Vector2(64, 6), 3))
+		bar.add_child(UI.chip(GameData.MATERIALS[t].color, Vector2(64, 6), 3))
 	col.add_child(_spaced(bar, 10))
 
 	var tag := UI.wrap_label(Loc.t("tagline"), 20, Color(0.88, 0.95, 0.95), 470)
 	col.add_child(_spaced(tag, 12))
-	col.add_child(_gap(22))
+	col.add_child(UI.gap(22))
 
 	var buttons := VBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 12)
-	var play := _menu_button(Loc.t("play"), true)
+	var play := UI.menu_button(Loc.t("play"), true)
 	play.pressed.connect(_start_game)
 	buttons.add_child(play)
-	var how := _menu_button(Loc.t("how_to"))
+	var shop := UI.menu_button(Loc.t("upgrades"))
+	shop.pressed.connect(_set_shop.bind(true))
+	var pts := UI.pill("%d" % Meta.points, MINT, 15)
+	pts.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+	pts.offset_left = -96
+	pts.offset_right = -16
+	pts.offset_top = -13
+	pts.offset_bottom = 13
+	pts.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	shop.add_child(pts)
+	buttons.add_child(shop)
+	var how := UI.menu_button(Loc.t("how_to"))
 	how.pressed.connect(_set_how.bind(true))
 	buttons.add_child(how)
 	if not OS.has_feature("web"):
-		var quit := _menu_button(Loc.t("quit"))
+		var quit := UI.menu_button(Loc.t("quit"))
 		quit.pressed.connect(func(): get_tree().quit())
 		buttons.add_child(quit)
 	col.add_child(buttons)
@@ -160,7 +166,7 @@ func _left_column() -> VBoxContainer:
 	var pulse := play.create_tween().set_loops()
 	pulse.tween_property(play, "modulate", Color(1.12, 1.12, 1.12), 0.9).set_trans(Tween.TRANS_SINE)
 	pulse.tween_property(play, "modulate", Color.WHITE, 0.9).set_trans(Tween.TRANS_SINE)
-	if not _how_open:
+	if not _how_open and not _shop_open:
 		play.grab_focus.call_deferred()
 	return col
 
@@ -177,7 +183,7 @@ func _right_column() -> VBoxContainer:
 	col.add_theme_constant_override("separation", 16)
 
 	# bin legend
-	var sort := _card(Color(1, 1, 1, 0.12))
+	var sort := UI.card(Color(1, 1, 1, 0.12))
 	var sv := VBoxContainer.new()
 	sv.add_theme_constant_override("separation", 8)
 	sort.add_child(sv)
@@ -188,17 +194,17 @@ func _right_column() -> VBoxContainer:
 		var c: Color = GameData.MATERIALS[t].color
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
-		row.add_child(_chip(c, Vector2(26, 26), 7))
+		row.add_child(UI.chip(c, Vector2(26, 26), 7))
 		var mat_name := UI.label(Loc.pick(GameData.MATERIALS[t].name), 19, Color.WHITE, 0)
 		mat_name.add_theme_font_override("font", UI.font(0.5))
 		mat_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(mat_name)
-		row.add_child(_pill(Loc.t(PERKS[t]), c))
+		row.add_child(UI.pill(Loc.t(PERKS[t]), c))
 		sv.add_child(row)
 	col.add_child(sort)
 
 	# rotating fact card
-	var fact := _card(Color(SUN, 0.8))
+	var fact := UI.card(Color(SUN, 0.8))
 	var fv := VBoxContainer.new()
 	fv.add_theme_constant_override("separation", 8)
 	fact.add_child(fv)
@@ -264,7 +270,7 @@ func _how_modal() -> Control:
 	root.add_child(UI.dim(0.6))
 	var center := UI.centered()
 	root.add_child(center)
-	var panel := _card(Color(MINT, 0.35), 22)
+	var panel := UI.card(Color(MINT, 0.35), 22)
 	center.add_child(panel)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 18)
@@ -284,7 +290,7 @@ func _how_modal() -> Control:
 	var keys := UI.label(Loc.t("how_keys"), 15, MUTED, 0)
 	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(keys)
-	var back := _menu_button(Loc.t("back"), true)
+	var back := UI.menu_button(Loc.t("back"), true)
 	back.custom_minimum_size = Vector2(260, 54)
 	back.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	back.pressed.connect(_set_how.bind(false))
@@ -298,7 +304,7 @@ func _how_modal() -> Control:
 
 
 func _step_card(n: int, title: String, text: String, accent: Color, show_bins: bool) -> PanelContainer:
-	var p := _card(Color(accent, 0.5), 16, Color(1, 1, 1, 0.04))
+	var p := UI.card(Color(accent, 0.5), 16, Color(1, 1, 1, 0.04))
 	p.custom_minimum_size = Vector2(420, 150)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
@@ -327,115 +333,111 @@ func _step_card(n: int, title: String, text: String, accent: Color, show_bins: b
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
 		for m in GameData.BIN_TYPES:
-			row.add_child(_pill(Loc.pick(GameData.MATERIALS[m].name), GameData.MATERIALS[m].color, 13))
+			row.add_child(UI.pill(Loc.pick(GameData.MATERIALS[m].name), GameData.MATERIALS[m].color, 13))
 		v.add_child(row)
 	return p
 
 
-# --- widgets -------------------------------------------------------------------
+func _shop_modal() -> Control:
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(UI.dim(0.65))
+	var center := UI.centered()
+	root.add_child(center)
+	var panel := UI.card(Color(MINT, 0.35), 22, Color(INK, 0.9), Vector4(26, 18, 26, 18))
+	center.add_child(panel)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 12)
+	panel.add_child(vb)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 14)
+	vb.add_child(head)
+	var title := UI.label(Loc.t("upgrades"), 34, SUN, 0)
+	title.add_theme_font_override("font", UI.font(0.8, 4))
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	head.add_child(UI.Icons.make("recycle", MINT, 26))
+	var pts := UI.label("%d" % Meta.points, 28, MINT, 0)
+	pts.add_theme_font_override("font", UI.font(0.8, 1))
+	head.add_child(pts)
+	var cap := UI.label(Loc.t("points"), 14, MUTED, 0)
+	cap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(cap)
+	vb.add_child(UI.wrap_label(Loc.t("shop_hint"), 15, MUTED, 820))
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 10)
+	vb.add_child(grid)
+	var first: Button = null
+	for id in GameData.META:
+		var b := _shop_item(id, grid)
+		if first == null and b != null:
+			first = b
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", 12)
+	foot.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_child(foot)
+	var back := UI.menu_button(Loc.t("back"), true, 240)
+	back.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	back.pressed.connect(_set_shop.bind(false))
+	foot.add_child(back)
+	var refund := UI.menu_button(Loc.t("refund"), false, 180)
+	refund.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	refund.pressed.connect(Meta.refund_all)
+	foot.add_child(refund)
+	(first if first != null else back).grab_focus.call_deferred()
+	return root
 
-func _menu_button(text: String, primary := false) -> Button:
+
+## One upgrade row; returns its buy button (null when maxed).
+func _shop_item(id: String, grid: GridContainer) -> Button:
+	var d: Dictionary = GameData.META[id]
+	var lv := Meta.lv(id)
+	var maxed: bool = lv >= d.max
+	var card := UI.card(Color(d.color, 0.6), 14, Color(1, 1, 1, 0.04), Vector4(12, 8, 12, 8))
+	card.custom_minimum_size.x = 410
+	grid.add_child(card)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	card.add_child(h)
+	h.add_child(UI.icon_tile(d.icon, d.color, 46))
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 3)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(v)
+	var nl := UI.label(Loc.pick(d.name), 17, Color.WHITE, 0)
+	nl.add_theme_font_override("font", UI.font(0.5, 0))
+	v.add_child(nl)
+	v.add_child(UI.label(Loc.pick(d.desc), 13, MUTED, 0))
+	v.add_child(UI.pips(lv, d.color, d.max, Vector2(16, 5)))
+	if maxed:
+		h.add_child(UI.pill(Loc.t("maxed"), SUN, 14))
+		return null
+	var cost := Meta.cost(id)
 	var b := Button.new()
-	b.text = text
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.custom_minimum_size = Vector2(380, 66 if primary else 54)
-	b.add_theme_font_size_override("font_size", 28 if primary else 21)
-	b.add_theme_font_override("font", UI.font(0.7 if primary else 0.35, 3 if primary else 2))
-	b.add_theme_color_override("font_color", Color.WHITE)
-	b.add_theme_color_override("font_hover_color", Color.WHITE)
-	b.add_theme_color_override("font_focus_color", Color.WHITE)
-	var bg := Color(0.11, 0.55, 0.32, 0.96) if primary else Color(INK, 0.72)
-	var accent := MINT if primary else Color(1, 1, 1, 0.3)
-	b.add_theme_stylebox_override("normal", _btn_style(bg, accent, 6))
-	b.add_theme_stylebox_override("hover", _btn_style(bg.lightened(0.12), SUN, 12))
-	b.add_theme_stylebox_override("pressed", _btn_style(bg.darkened(0.15), SUN, 12))
-	var focus := _btn_style(Color(0, 0, 0, 0), SUN, 12)
-	focus.draw_center = false
-	b.add_theme_stylebox_override("focus", focus)
-	b.pressed.connect(func(): Sfx.play("click", -6))
-	b.mouse_entered.connect(_hover.bind(b, true))
-	b.mouse_exited.connect(_hover.bind(b, false))
-	b.focus_entered.connect(_hover.bind(b, true))
-	b.focus_exited.connect(_hover.bind(b, false))
-	return b
+	b.text = "%s  %d" % [Loc.t("buy"), cost]
+	b.custom_minimum_size = Vector2(104, 40)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.add_theme_font_size_override("font_size", 15)
+	b.add_theme_font_override("font", UI.font(0.5, 1))
+	var ok := Meta.points >= cost
+	var bg := Color(0.11, 0.55, 0.32, 0.96) if ok else Color(1, 1, 1, 0.06)
+	b.add_theme_stylebox_override("normal", UI.style(bg, 10))
+	b.add_theme_stylebox_override("hover", UI.style(bg.lightened(0.12), 10, SUN, 2))
+	b.add_theme_stylebox_override("pressed", UI.style(bg.darkened(0.15), 10, SUN, 2))
+	b.add_theme_stylebox_override("focus", UI.style(Color(0, 0, 0, 0), 10, SUN, 2))
+	b.add_theme_stylebox_override("disabled", UI.style(bg, 10))
+	b.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.35))
+	b.disabled = not ok
+	b.pressed.connect(func():
+		if Meta.buy(id):
+			Sfx.play("levelup", -6))
+	h.add_child(b)
+	return b if ok else null
 
 
-func _btn_style(bg: Color, accent: Color, accent_w: int) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color = bg
-	s.set_corner_radius_all(12)
-	s.border_color = accent
-	s.border_width_left = accent_w
-	s.content_margin_left = 22 + accent_w
-	s.content_margin_right = 22
-	return s
-
-
-func _hover(b: Button, on: bool) -> void:
-	if on:
-		Sfx.play("click", -18, 0.05)
-	b.pivot_offset = Vector2(0, b.size.y * 0.5)
-	b.create_tween().tween_property(b, "scale", Vector2.ONE * (1.04 if on else 1.0), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-
-func _card(border: Color, radius := 16, bg := Color(INK, 0.82)) -> PanelContainer:
-	var p := PanelContainer.new()
-	var s := StyleBoxFlat.new()
-	s.bg_color = bg
-	s.set_corner_radius_all(radius)
-	s.border_color = border
-	s.set_border_width_all(1)
-	s.border_width_left = 4
-	s.content_margin_left = 22
-	s.content_margin_right = 22
-	s.content_margin_top = 18
-	s.content_margin_bottom = 18
-	p.add_theme_stylebox_override("panel", s)
-	return p
-
-
-func _chip(c: Color, size: Vector2, radius: int) -> Panel:
-	var p := Panel.new()
-	var s := StyleBoxFlat.new()
-	s.bg_color = c
-	s.set_corner_radius_all(radius)
-	p.add_theme_stylebox_override("panel", s)
-	p.custom_minimum_size = size
-	p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return p
-
-
-func _pill(text: String, c: Color, font_size := 15) -> PanelContainer:
-	var p := PanelContainer.new()
-	var s := StyleBoxFlat.new()
-	s.bg_color = Color(c, 0.18)
-	s.border_color = Color(c, 0.7)
-	s.set_border_width_all(1)
-	s.set_corner_radius_all(12)
-	s.content_margin_left = 10
-	s.content_margin_right = 10
-	s.content_margin_top = 2
-	s.content_margin_bottom = 2
-	p.add_theme_stylebox_override("panel", s)
-	p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var l := UI.label(text, font_size, c.lightened(0.35), 0)
-	p.add_child(l)
-	return p
-
-
-func _shadow(l: Label, offset: int) -> void:
-	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.45))
-	l.add_theme_constant_override("shadow_offset_x", 0)
-	l.add_theme_constant_override("shadow_offset_y", offset)
-
-
-func _gap(h: float) -> Control:
-	var c := Control.new()
-	c.custom_minimum_size.y = h
-	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return c
-
+# --- widgets -------------------------------------------------------------------
 
 ## Wraps a control with extra space above it.
 func _spaced(c: Control, top: int) -> MarginContainer:
@@ -474,6 +476,11 @@ func _set_how(open: bool) -> void:
 	_build()
 
 
+func _set_shop(open: bool) -> void:
+	_shop_open = open
+	_build()
+
+
 func _start_game() -> void:
 	if _leaving:
 		return
@@ -498,4 +505,8 @@ func _maybe_screenshot() -> void:
 		_set_how(true)
 	elif _t >= 2.6 and prev < 2.6:
 		get_viewport().get_texture().get_image().save_png(dir.path_join("menu_how.png"))
+		_how_open = false
+		_set_shop(true)
+	elif _t >= 3.2 and prev < 3.2:
+		get_viewport().get_texture().get_image().save_png(dir.path_join("menu_shop.png"))
 		get_tree().quit()

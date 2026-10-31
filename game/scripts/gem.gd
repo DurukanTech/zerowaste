@@ -18,7 +18,17 @@ var _mesh: MeshInstance3D
 static func _mesh_for(t: String) -> Mesh:
 	if not _meshes.has(t):
 		var mb := ModelBuilder.new()
-		if t == "heal":
+		if t == "chest":
+			# reward crate made of reclaimed wood with a recycling badge
+			var wood := Color(0.62, 0.42, 0.22)
+			mb.box(Vector3(0.62, 0.42, 0.44), wood, Vector3(0, 0, 0))
+			mb.box(Vector3(0.66, 0.06, 0.48), Color(1.0, 0.8, 0.25), Vector3(0, 0.12, 0))
+			mb.box(Vector3(0.66, 0.06, 0.48), Color(1.0, 0.8, 0.25), Vector3(0, -0.14, 0))
+			mb.box(Vector3(0.64, 0.14, 0.46), wood.lightened(0.15), Vector3(0, 0.26, 0))
+			for i in 3:
+				var a := float(i) / 3.0 * TAU
+				mb.prism(Vector3(0.1, 0.1, 0.02), Color(0.4, 1.0, 0.55), Vector3(sin(a) * 0.08, cos(a) * 0.08, 0.23), Vector3(0, 0, -a))
+		elif t == "heal":
 			mb.cyl(0.15, 0.15, 0.42, Color(0.35, 0.8, 1.0), Vector3(0, 0, 0))
 			mb.cyl(0.155, 0.155, 0.16, Color(0.96, 0.96, 0.96), Vector3(0, -0.02, 0))
 			mb.cyl(0.08, 0.08, 0.1, Color(0.15, 0.35, 0.9), Vector3(0, 0.26, 0))
@@ -35,8 +45,12 @@ func setup(t: String, v: float) -> void:
 	value = v
 	_t = randf() * TAU
 	var mat := MF.vc_mat() if t == "heal" else MF.vc_mat(false, 1.4)
+	if t == "chest":
+		mat = MF.vc_mat(false, 0.6)
+		var beam := MF.inst(MF.cyl_mesh(0.05, 0.3, 6.0), MF.glow_mat(Color(1.0, 0.85, 0.35, 0.3), 2.0), self, Vector3(0, 3.0, 0), false)
+		beam.name = "Beam"
 	_mesh = MF.inst(_mesh_for(t), mat, self, Vector3(0, 0.45, 0), false)
-	if v >= 4.0:
+	if v >= 4.0 or t == "chest":
 		_mesh.scale = Vector3.ONE * 1.5
 
 
