@@ -9,10 +9,28 @@ const PATH := "user://save.json"
 var points := 0
 var levels := {}  # upgrade id -> level
 var best := {"time": 0.0, "kills": 0, "sorted": 0, "wins": 0, "runs": 0}
+var volume := {"Music": 0.7, "SFX": 0.8}   # linear 0..1 per audio bus
 
 
 func _ready() -> void:
 	_load()
+	for bus in volume:
+		_apply_volume(bus)
+
+
+func set_volume(bus: String, v: float) -> void:
+	volume[bus] = clampf(v, 0.0, 1.0)
+	_apply_volume(bus)
+	_save()
+
+
+func _apply_volume(bus: String) -> void:
+	var i := AudioServer.get_bus_index(bus)
+	if i < 0:
+		return
+	var v: float = volume[bus]
+	AudioServer.set_bus_mute(i, v <= 0.001)
+	AudioServer.set_bus_volume_db(i, linear_to_db(maxf(v, 0.001)))
 
 
 func lv(id: String) -> int:
@@ -78,7 +96,7 @@ func _save() -> void:
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f == null:
 		return
-	f.store_string(JSON.stringify({"points": points, "levels": levels, "best": best}))
+	f.store_string(JSON.stringify({"points": points, "levels": levels, "best": best, "volume": volume}))
 
 
 func _load() -> void:
@@ -95,6 +113,11 @@ func _load() -> void:
 			for id in l:
 				if GameData.META.has(id):
 					levels[id] = clampi(int(l[id]), 0, GameData.META[id].max)
+		var vol = data.get("volume", {})
+		if vol is Dictionary:
+			for k in volume:
+				if vol.has(k):
+					volume[k] = clampf(float(vol[k]), 0.0, 1.0)
 		var b = data.get("best", {})
 		if b is Dictionary:
 			for k in best:

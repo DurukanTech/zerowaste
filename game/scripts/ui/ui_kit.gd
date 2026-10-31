@@ -56,7 +56,7 @@ static func button(text: String, size := 26, color := GREEN, min_size := Vector2
 	b.add_theme_stylebox_override("hover", style(color.lightened(0.18), 14, Color(1, 1, 1, 0.9), 3))
 	b.add_theme_stylebox_override("pressed", style(color.darkened(0.2), 14, Color(1, 1, 1, 0.9), 3))
 	b.add_theme_stylebox_override("focus", style(Color(0, 0, 0, 0), 14, Color(1, 0.9, 0.4), 3))
-	b.pressed.connect(func(): Sfx.play("click", -6))
+	b.pressed.connect(func(): Sfx.play("click"))
 	return b
 
 
@@ -261,7 +261,7 @@ static func menu_button(text: String, primary := false, width := 380.0, bg_overr
 	var focus := _btn_style(Color(0, 0, 0, 0), SUN, 12)
 	focus.draw_center = false
 	b.add_theme_stylebox_override("focus", focus)
-	b.pressed.connect(func(): Sfx.play("click", -6))
+	b.pressed.connect(func(): Sfx.play("click"))
 	b.mouse_entered.connect(func(): _hover(b, true))
 	b.mouse_exited.connect(func(): _hover(b, false))
 	b.focus_entered.connect(func(): _hover(b, true))
@@ -282,6 +282,47 @@ static func _btn_style(bg: Color, accent: Color, accent_w: int) -> StyleBoxFlat:
 
 static func _hover(b: Button, on: bool) -> void:
 	if on:
-		Sfx.play("click", -18, 0.05)
+		Sfx.play("click", -8)
 	b.pivot_offset = Vector2(0, b.size.y * 0.5)
 	b.create_tween().tween_property(b, "scale", Vector2.ONE * (1.04 if on else 1.0), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## Labeled volume slider bound to an audio bus ("Music" / "SFX").
+static func volume_row(text: String, bus: String, width := 300.0) -> HBoxContainer:
+	var h := hbox(12)
+	h.alignment = BoxContainer.ALIGNMENT_BEGIN
+	h.mouse_filter = Control.MOUSE_FILTER_PASS
+	var l := label(text, 15, MUTED, 0)
+	l.add_theme_font_override("font", font(0.4, 1))
+	l.custom_minimum_size.x = 86
+	h.add_child(l)
+	var s := HSlider.new()
+	s.min_value = 0.0
+	s.max_value = 1.0
+	s.step = 0.05
+	s.value = Meta.volume.get(bus, 0.8)
+	s.custom_minimum_size = Vector2(width - 140, 24)
+	s.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color(1, 1, 1, 0.14)
+	track.set_corner_radius_all(4)
+	track.content_margin_top = 3
+	track.content_margin_bottom = 3
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = MINT
+	fill.set_corner_radius_all(4)
+	fill.content_margin_top = 3
+	fill.content_margin_bottom = 3
+	s.add_theme_stylebox_override("slider", track)
+	s.add_theme_stylebox_override("grabber_area", fill)
+	s.add_theme_stylebox_override("grabber_area_highlight", fill)
+	h.add_child(s)
+	var pct := label("%d%%" % int(round(s.value * 100)), 14, Color.WHITE, 0)
+	pct.custom_minimum_size.x = 44
+	h.add_child(pct)
+	s.value_changed.connect(func(v: float):
+		Meta.set_volume(bus, v)
+		pct.text = "%d%%" % int(round(v * 100)))
+	if bus == "SFX":
+		s.drag_ended.connect(func(_changed: bool): Sfx.play("select"))
+	return h

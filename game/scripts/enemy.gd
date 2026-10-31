@@ -189,7 +189,7 @@ func think(delta: float, game) -> void:
 	_anim_t += delta
 	var s := _base_scale
 	# pure animation is skipped for monsters well outside the camera view
-	if kind in ["bag", "bottle", "battery", "rot", "rot_small", "box"]:
+	if game != null and kind in ["bag", "bottle", "battery", "rot", "rot_small", "box"]:
 		var pp: Vector3 = game.player.position
 		if absf(position.x - pp.x) > 24.0 or absf(position.z - pp.z) > 20.0:
 			return
@@ -323,7 +323,7 @@ func _boss_think(delta: float, game) -> void:
 			if _charge_t <= 0.0:
 				_charge_state = 1
 				_charge_t = 0.8
-				Sfx.play("warning", -6)
+				Sfx.play("warning")
 		1:
 			# telegraph: raise the bags, shake & flash
 			_body.position.x = sin(_anim_t * 60.0) * 0.12
@@ -338,7 +338,7 @@ func _boss_think(delta: float, game) -> void:
 				var to: Vector3 = game.player.position - position
 				to.y = 0
 				_charge_dir = to.normalized()
-				Sfx.play("whoosh", 0.0)
+				Sfx.play("whoosh")
 		2:
 			move_override = _charge_dir * (17.0 if enraged else 14.0)
 			_body.rotation.x = 0.25

@@ -71,6 +71,8 @@ const STRINGS := {
 	# abilities
 	"dash": {"tr": "ATIL", "en": "DASH"},
 	"key_space": {"tr": "Boşluk", "en": "Space"},
+	"music_vol": {"tr": "MÜZİK", "en": "MUSIC"},
+	"sfx_vol": {"tr": "EFEKTLER", "en": "EFFECTS"},
 	"ultimate": {"tr": "PATLAMA", "en": "BLAST"},
 	"ult_ready": {"tr": "Geri Dönüşüm Patlaması hazır! (Boşluk)", "en": "Recycling Blast ready! (Space)"},
 	"revived": {"tr": "İKİNCİ ŞANS!", "en": "SECOND CHANCE!"},

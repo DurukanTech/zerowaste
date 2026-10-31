@@ -71,7 +71,7 @@ func _reroll() -> void:
 		return
 	game.player.rerolls -= 1
 	_choices = game.roll_choices()
-	Sfx.play("whoosh", -6)
+	Sfx.play("whoosh")
 	_build()
 
 
@@ -320,7 +320,7 @@ func _style(bg: Color, border: Color, w: int) -> StyleBoxFlat:
 
 func _hover(b: Button, on: bool) -> void:
 	if on:
-		Sfx.play("click", -18, 0.05)
+		Sfx.play("click", -8)
 	b.pivot_offset = b.size * 0.5
 	b.z_index = 1 if on else 0
 	b.create_tween().tween_property(b, "scale", Vector2.ONE * (1.05 if on else 1.0), 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

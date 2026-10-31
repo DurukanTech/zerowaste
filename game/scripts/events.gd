@@ -96,6 +96,7 @@ func _fire(id: String) -> void:
 			Sfx.play("warning")
 		"boss":
 			game.boss_spawned = true
+			Music.set_intense(true)
 			var b = game.spawn_enemy("boss", game.spawn_pos(), 1.0)
 			hud.set_boss(b)
 			game.add_shake(0.4)
@@ -108,7 +109,7 @@ func _start_map_event(id: String) -> void:
 	active_left = {"plastic_rain": RAIN_TIME, "flood": FLOOD_TIME, "smog": SMOG_TIME}[id]
 	game.hud.banner(Loc.t("ev_" + id), Color(0.75, 0.9, 1.0))
 	game.hud.toast(Loc.t("ev_" + id + "_hint") + "\n" + Loc.t("did_you_know") + " " + GameData.fact_text({"plastic_rain": 26, "flood": 27, "smog": 25}[id]), Color(0.6, 0.8, 1.0))
-	Sfx.play("warning", -4)
+	Sfx.play("warning")
 	if id == "flood":
 		for i in 7:
 			var a := randf() * TAU

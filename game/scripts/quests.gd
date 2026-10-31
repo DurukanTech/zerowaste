@@ -59,7 +59,7 @@ func _start() -> void:
 	q.left = q.time
 	active = q
 	game.hud.quest_started()
-	Sfx.play("select", -8)
+	Sfx.play("select")
 
 
 func text() -> String:
@@ -74,7 +74,7 @@ func _complete() -> void:
 	game.player.add_ult(25.0)
 	game.give_chest("quest")
 	game.hud.toast(Loc.t("quest_done"), Color(0.62, 1.0, 0.7))
-	Sfx.play("levelup", -6)
+	Sfx.play("levelup")
 	_end()
 
 

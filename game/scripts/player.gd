@@ -232,7 +232,7 @@ func _start_dash(dir: Vector3) -> void:
 	var from := position
 	var to := position + dir * DASH_SPEED * DASH_TIME
 	game.fx.streak(from, to, Color(0.55, 1.0, 0.7))
-	Sfx.play("whoosh", -6, 0.05)
+	Sfx.play("dash")
 
 
 ## Walk cycle / idle breathing. Also used by the menu backdrop.
@@ -353,7 +353,7 @@ func hurt(amount: float) -> void:
 		for mi in _body_meshes:
 			mi.material_override = red
 	_hurt_flash = 0.1
-	Sfx.play("hurt", -6, 0.22)
+	Sfx.play("hurt")
 	game.add_shake(0.15)
 	game.hud.hurt_flash()
 	if hp <= 0.0:

@@ -22,6 +22,7 @@ Loc="*res://scripts/autoload/loc.gd"
 GameData="*res://scripts/autoload/game_data.gd"
 Sfx="*res://scripts/autoload/sfx.gd"
 Meta="*res://scripts/autoload/meta.gd"
+Music="*res://scripts/autoload/music.gd"
 
 [display]
 

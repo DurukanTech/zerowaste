@@ -88,7 +88,7 @@ func _deposit(b) -> void:
 		msg = Loc.t("combo") + " x%d!  " % combo + msg
 		game.hud.combo_pop(combo)
 	game.hud.toast(msg + "\n" + Loc.t("did_you_know") + " " + GameData.material_fact(t), col)
-	Sfx.play("deposit", -2)
+	Sfx.play("deposit")
 	b.burst()
 	game.fx.shockwave(b.position, col, 4.0 + combo * 0.6, 0.4, 2.5)
 	game.quests.on_deposit(t, n)
@@ -164,7 +164,7 @@ func _open_point() -> void:
 	ewaste_point.scale = Vector3(0.05, 0.05, 0.05)
 	ewaste_point.create_tween().tween_property(ewaste_point, "scale", Vector3.ONE, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	game.hud.banner(Loc.t("ewaste_open"), Color(1.0, 0.8, 0.4))
-	Sfx.play("warning", -10)
+	Sfx.play("warning")
 
 
 func _close_point() -> void:
@@ -187,7 +187,7 @@ func _deliver() -> void:
 		game.give_chest("ewaste")
 	game.fx.big_burst(ewaste_point.position, Color(1.0, 0.75, 0.25), 30)
 	game.hud.toast(Loc.t("ewaste_done").format({"n": n}) + "\n" + Loc.t("did_you_know") + " " + GameData.material_fact("ewaste"), Color(1.0, 0.75, 0.25))
-	Sfx.play("deposit", 0)
+	Sfx.play("deposit")
 	game.quests.on_ewaste(n)
 	_close_point()
 

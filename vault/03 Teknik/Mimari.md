@@ -7,7 +7,7 @@ tags: [teknik]
 ## Genel
 - **Godot 4.7.2**, GDScript, **GL Compatibility** renderer (Web export'ta en geniş uyumluluk için)
 - Harici asset yok: Tüm mesh'ler primitive (Box/Sphere/Cylinder/Capsule/Torus/Prism), zemin ve deniz için küçük shader'lar
-- **Sesler** çalışma anında kodla üretiliyor (`AudioStreamWAV`, sine/square/noise), yani dosya bağımlılığı yok
+- **Efektler** çalışma anında kodla üretiliyor (marimba, çan, su damlası, boğuk vuruş). **Müzik** tek bir döngü dosyası (`music/`). Ayrıntılar: [[Ses ve Müzik]]
 - Neredeyse her şey koddan kuruluyor; `.tscn` dosyaları sadece birer kök node
 
 ## Klasör Yapısı (`game/`)
@@ -16,7 +16,8 @@ project.godot
 scenes/        main_menu.tscn, game.tscn
 scripts/
   autoload/    loc.gd (TR/EN), game_data.gd (tüm veri + input map), sfx.gd
-  autoload/meta.gd  kalıcı puan + yükseltmeler (user://save.json)
+  autoload/meta.gd  kalıcı puan, yükseltmeler, ses ayarları (user://save.json)
+  autoload/music.gd döngü müzik: duraklatınca boğuklaşma, ducking, boss'ta yoğunlaşma
   game.gd      run kontrolü: spawn, düşman yöneticisi, malzemeler, ultimate, akış
   sorting.gd   kutular, teslim, kombo serisi, E-Atık Noktası
   quests.gd    run içi görevler ve ödül sandıkları

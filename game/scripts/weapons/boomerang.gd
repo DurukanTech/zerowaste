@@ -32,7 +32,7 @@ func tick(delta: float) -> void:
 		var n: int = s[0]
 		for i in n:
 			_throw(dir.rotated(Vector3.UP, float(i) / n * TAU), area(s[2]))
-		Sfx.play("whoosh", -14, 0.1)
+		Sfx.play("whoosh")
 	for i in range(_rangs.size() - 1, -1, -1):
 		var r: Dictionary = _rangs[i]
 		var node: Node3D = r.node

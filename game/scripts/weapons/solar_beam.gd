@@ -23,7 +23,7 @@ func tick(delta: float) -> void:
 	pool.shuffle()
 	for i in mini(s[0], pool.size()):
 		_strike(pool[i].position, s, i == 0)
-	Sfx.play("zap", -8, 0.1)
+	Sfx.play("zap")
 
 
 func _strike(pos: Vector3, s: Array, light: bool) -> void:

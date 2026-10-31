@@ -72,6 +72,7 @@ func _build(intro := false) -> void:
 	var right := _right_column()
 	_ui.add_child(right)
 	_ui.add_child(_lang_switch())
+	_ui.add_child(_audio_card())
 
 	if _how_open:
 		_ui.add_child(_how_modal())
@@ -258,10 +259,27 @@ func _lang_switch() -> HBoxContainer:
 			b.add_theme_stylebox_override(state, s)
 		if not active:
 			b.pressed.connect(func():
-				Sfx.play("click", -6)
+				Sfx.play("click")
 				Loc.toggle())
 		h.add_child(b)
 	return h
+
+
+## Music / effects volume, under the language switch.
+func _audio_card() -> Control:
+	var card := UI.card(Color(1, 1, 1, 0.12), 14, Color(INK, 0.72), Vector4(14, 8, 12, 8))
+	card.anchor_left = 1.0
+	card.anchor_right = 1.0
+	card.offset_left = -48
+	card.offset_right = -48
+	card.offset_top = 82
+	card.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	card.mouse_filter = Control.MOUSE_FILTER_PASS
+	var v := UI.vbox(4)
+	card.add_child(v)
+	v.add_child(UI.volume_row(Loc.t("music_vol"), "Music", 300))
+	v.add_child(UI.volume_row(Loc.t("sfx_vol"), "SFX", 300))
+	return card
 
 
 func _how_modal() -> Control:
@@ -432,7 +450,7 @@ func _shop_item(id: String, grid: GridContainer) -> Button:
 	b.disabled = not ok
 	b.pressed.connect(func():
 		if Meta.buy(id):
-			Sfx.play("levelup", -6))
+			Sfx.play("levelup"))
 	h.add_child(b)
 	return b if ok else null
 

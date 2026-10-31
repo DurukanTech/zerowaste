@@ -71,6 +71,9 @@ func _build() -> void:
 		get_tree().paused = false
 		get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))
 	left.add_child(menu)
+	left.add_child(UI.gap(6))
+	left.add_child(UI.volume_row(Loc.t("music_vol"), "Music", 360))
+	left.add_child(UI.volume_row(Loc.t("sfx_vol"), "SFX", 360))
 
 	# right: current build
 	var card := UI.card(Color(UI.MINT, 0.45), 18, Color(UI.INK, 0.86))

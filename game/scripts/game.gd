@@ -88,6 +88,7 @@ var _perf_real := 0
 
 func _ready() -> void:
 	randomize()
+	Music.set_intense(false)
 	autotest = OS.get_cmdline_user_args().has("--autotest")
 	showcase = OS.get_cmdline_user_args().has("--showcase")
 	for t in GameData.BIN_TYPES:
@@ -596,7 +597,7 @@ func _explode(e) -> void:
 	e.dead = true
 	player.hurt(e.damage)
 	add_shake(0.35)
-	Sfx.play("explode", -2, 0.1)
+	Sfx.play("explode")
 	fx.big_burst(e.position, Color(1.0, 0.55, 0.15), 24)
 
 
@@ -677,7 +678,7 @@ func damage_enemy(e, amount: float, knock_dir := Vector3.ZERO, knock_force := 0.
 	if knock_force > 0.0:
 		e.knock += knock_dir * knock_force * e.knock_resist
 	_show_damage(e.position, amount, e.is_boss)
-	Sfx.play("hit", -14, 0.05)
+	Sfx.play("hit")
 	if e.hp <= 0.0:
 		_kill(e)
 
@@ -776,12 +777,12 @@ func _collect(g) -> void:
 	var t: String = g.mat_type
 	if t == "heal":
 		player.heal(g.value)
-		Sfx.play("select", -4)
+		Sfx.play("select")
 	elif t == "chest":
 		give_chest("elite")
 	else:
 		player.add_xp(g.value)
-		Sfx.play("pickup", -16, 0.04)
+		Sfx.play("pickup")
 		if carried.has(t):
 			collected[t] += 1
 			carried[t] = mini(player.carry_cap(), carried[t] + 1)
@@ -800,7 +801,7 @@ func _collect(g) -> void:
 # --- flow --------------------------------------------------------------------
 
 func on_level_up() -> void:
-	Sfx.play("levelup", -3)
+	Sfx.play("levelup")
 	fx.level_up(player.position)
 	level_ui.queue_level_up()
 
@@ -873,7 +874,7 @@ func apply_choice(c: Dictionary) -> void:
 		"evolve":
 			player.evolve_weapon(c.id)
 			hud.banner(Loc.t("evolved") + " " + Loc.upper(Loc.pick(GameData.EVOLUTIONS[c.id].name)), Color(1.0, 0.85, 0.35))
-			Sfx.play("win", -6)
+			Sfx.play("win")
 		"weapon":
 			player.add_or_upgrade_weapon(c.id)
 		"passive":
@@ -903,7 +904,7 @@ func on_player_revived() -> void:
 ## Reward crate: an extra upgrade pick without a level.
 func give_chest(src := "") -> void:
 	stat_chests[src] = stat_chests.get(src, 0) + 1
-	Sfx.play("levelup", -4)
+	Sfx.play("levelup")
 	fx.level_up(player.position)
 	level_ui.queue_level_up("chest")
 
@@ -912,7 +913,7 @@ func on_boss_phase(e) -> void:
 	if autotest:
 		print("[autotest] %s phase %d t=%.1f" % [e.kind, e.phase, elapsed])
 	add_shake(0.35)
-	Sfx.play("warning", -2)
+	Sfx.play("warning")
 	fx.big_burst(e.position, Color(1.0, 0.4, 0.3), 30)
 	var key := "phase_mini" if e.kind == "miniboss" else "phase_%d" % e.phase
 	hud.banner(Loc.t(key), Color(1.0, 0.5, 0.35))
@@ -939,8 +940,7 @@ func ultimate_blast() -> void:
 	fx.big_burst(pos, Color(0.62, 1.0, 0.7), 60)
 	fx.flash_light(pos + Vector3(0, 3, 0), Color(0.7, 1.0, 0.8), 6.0, 0.6)
 	add_shake(0.5)
-	Sfx.play("explode", 0)
-	Sfx.play("levelup", -4)
+	Sfx.play("ult")
 	hud.ult_flash()
 
 
@@ -948,6 +948,7 @@ func _finish(win: bool) -> void:
 	if finished:
 		return
 	finished = true
+	Music.set_intense(false)
 	if autotest:
 		print("[autotest] finished win=%s t=%.1f lv=%d kills=%d quests=%d ewaste=%d points=%d" % [win, elapsed, player.level, kills, quests.completed, sorting.ewaste_delivered, Meta.run_points(run_stats(), win)])
 	level_ui.close()

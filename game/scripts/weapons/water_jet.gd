@@ -54,7 +54,7 @@ func tick(delta: float) -> void:
 		if timer <= 0.0 and _spray <= 0.0:
 			timer = cd(s[3]) + s[4]
 			_spray = s[4]
-			Sfx.play("whoosh", -12, 0.2)
+			Sfx.play("whoosh")
 		_spray -= delta
 	var on := _spray > 0.0
 	for i in _jets.size():

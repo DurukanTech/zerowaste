@@ -24,4 +24,4 @@ func tick(delta: float) -> void:
 		for g in game.gems:
 			if game.flat_dist(g.position, player.position) < 30.0:
 				g.magnet = true
-	Sfx.play("whoosh", -4, 0.1)
+	Sfx.play("whoosh")

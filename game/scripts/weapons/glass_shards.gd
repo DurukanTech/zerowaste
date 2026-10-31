@@ -25,7 +25,7 @@ func tick(delta: float) -> void:
 			var n: int = s[0]
 			for i in n:
 				_fire(dir.rotated(Vector3.UP, (i - (n - 1) / 2.0) * 0.16), s)
-			Sfx.play("shoot", -10, 0.06)
+			Sfx.play("shoot")
 		else:
 			timer = 0.1
 	if evolved:

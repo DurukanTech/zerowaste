@@ -37,6 +37,7 @@ etkinlik: COP31 Türkiye Game Hackathon
 - **Teknik**
   - [[Mimari]]
   - [[Test ve Autotest]]
+  - [[Ses ve Müzik]]
 
 ## Çalıştırma
 Godot 4.7.2 → *Import* → `game/project.godot` → F5. Export için *Editor → Manage Export Templates* ile template'leri indir, ardından *Project → Export* menüsünden **Web** veya **Windows Desktop** seç.
