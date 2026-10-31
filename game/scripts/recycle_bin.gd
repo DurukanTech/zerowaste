@@ -63,7 +63,11 @@ func setup(t: String) -> void:
 
 
 func refresh_text() -> void:
-	_label.text = Loc.pick(GameData.MATERIALS[mat_type].name).to_upper()
+	_label.text = Loc.upper(Loc.pick(GameData.MATERIALS[mat_type].name))
+
+
+func set_label_visible(on: bool) -> void:
+	_label.visible = on
 
 
 func tick(delta: float) -> void:

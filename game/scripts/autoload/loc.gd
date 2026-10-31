@@ -6,17 +6,30 @@ signal language_changed
 var lang := "tr"
 
 const STRINGS := {
-	"title": {"tr": "SIFIR ATIK SAVAŞÇISI", "en": "ZERO WASTE WARRIOR"},
+	"eyebrow": {"tr": "3D ROGUELITE  •  GERİ DÖNÜŞÜM", "en": "3D ROGUELITE  •  RECYCLING"},
+	"title_1": {"tr": "SIFIR ATIK", "en": "ZERO WASTE"},
+	"title_2": {"tr": "SAVAŞÇISI", "en": "WARRIOR"},
 	"tagline": {"tr": "Atıkları topla, doğru kutuya at, aşırı tüketimi durdur!", "en": "Collect the waste, sort it right, stop overconsumption!"},
 	"play": {"tr": "OYNA", "en": "PLAY"},
 	"how_to": {"tr": "NASIL OYNANIR", "en": "HOW TO PLAY"},
 	"language": {"tr": "DİL: TÜRKÇE", "en": "LANGUAGE: ENGLISH"},
 	"quit": {"tr": "ÇIKIŞ", "en": "QUIT"},
 	"back": {"tr": "GERİ", "en": "BACK"},
-	"how_text": {
-		"tr": "• WASD / Ok tuşları ile hareket et. Saldırılar otomatiktir.\n• Atık canavarlarından düşen renkli malzemeleri topla: XP kazanırsın.\n• Seviye atlayınca 3 yükseltmeden birini seç (fare veya 1-2-3).\n• Taşıdığın malzemeyi AYNI RENKTEKİ geri dönüşüm kutusuna götür:\n     SARI Plastik → Atış hızı     MAVİ Kağıt → Hareket hızı\n     YEŞİL Cam → Hasar            KAHVERENGİ Organik → Can\n• Gri e-atık (pil) hiçbir kutuya gitmez: özel toplama noktasına aittir!\n• 10. dakikada gelen Aşırı Tüketim Devi'ni yen. Esc: duraklat.",
-		"en": "• Move with WASD / Arrow keys. Attacks are automatic.\n• Collect the colored materials dropped by waste monsters to earn XP.\n• On level up, pick 1 of 3 upgrades (mouse or 1-2-3).\n• Bring carried materials to the recycling bin of the SAME COLOR:\n     YELLOW Plastic → Fire rate     BLUE Paper → Move speed\n     GREEN Glass → Damage           BROWN Organic → Health\n• Grey e-waste (batteries) fits no bin: it belongs at special collection points!\n• Defeat the Overconsumption Giant at minute 10. Esc: pause.",
-	},
+	"enter_hint": {"tr": "Enter ile hemen başla", "en": "Press Enter to start"},
+	"sort_title": {"tr": "AYRIŞTIR, GÜÇLEN", "en": "SORT IT, POWER UP"},
+	"perk_firerate": {"tr": "Atış hızı", "en": "Fire rate"},
+	"perk_speed": {"tr": "Hareket hızı", "en": "Move speed"},
+	"perk_damage": {"tr": "Hasar", "en": "Damage"},
+	"perk_heal": {"tr": "Can", "en": "Health"},
+	"how_s1_t": {"tr": "HAREKET ET", "en": "MOVE"},
+	"how_s1": {"tr": "WASD veya ok tuşları. Saldırıların otomatik, sen sadece nerede duracağını seç.", "en": "WASD or arrow keys. Your attacks are automatic, you only choose where to stand."},
+	"how_s2_t": {"tr": "TOPLA", "en": "COLLECT"},
+	"how_s2": {"tr": "Atık canavarları renkli malzeme düşürür. Her biri XP verir; seviye atlayınca 3 yükseltmeden birini seç.", "en": "Waste monsters drop colored materials. Each gives XP; on level up pick 1 of 3 upgrades."},
+	"how_s3_t": {"tr": "AYRIŞTIR", "en": "SORT"},
+	"how_s3": {"tr": "Malzemeyi aynı renkteki kutuya götür, geçici güç kazan. Gri pil (e-atık) hiçbir kutuya gitmez!", "en": "Bring materials to the bin of the same color for a temporary boost. Grey batteries (e-waste) fit no bin!"},
+	"how_s4_t": {"tr": "DAYAN", "en": "SURVIVE"},
+	"how_s4": {"tr": "5. dakikada Çöp Dağı, 10. dakikada Aşırı Tüketim Devi gelir. Devi yen, parkı kurtar!", "en": "Trash Mountain arrives at minute 5, the Overconsumption Giant at minute 10. Beat the Giant, save the park!"},
+	"how_keys": {"tr": "Esc: Duraklat   •   1 / 2 / 3: Kart seç", "en": "Esc: Pause   •   1 / 2 / 3: Pick a card"},
 	"level_up": {"tr": "SEVİYE ATLADIN!", "en": "LEVEL UP!"},
 	"choose": {"tr": "Bir yükseltme seç (1 / 2 / 3)", "en": "Choose an upgrade (1 / 2 / 3)"},
 	"new": {"tr": "YENİ!", "en": "NEW!"},
@@ -71,6 +84,13 @@ func pick(d) -> String:
 	if d is Dictionary:
 		return d.get(lang, d.get("en", ""))
 	return str(d)
+
+
+## Locale-aware uppercase: Turkish "i" must become "İ", not "I".
+func upper(s: String) -> String:
+	if lang == "tr":
+		s = s.replace("i", "İ")
+	return s.to_upper()
 
 
 func toggle() -> void:

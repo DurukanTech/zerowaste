@@ -92,5 +92,14 @@ static func hbox(sep := 14) -> HBoxContainer:
 	return h
 
 
+## Bolder / letter-spaced variant of the default font (works on web too).
+static func font(embolden := 0.0, spacing := 0) -> FontVariation:
+	var f := FontVariation.new()
+	f.base_font = ThemeDB.fallback_font
+	f.variation_embolden = embolden
+	f.spacing_glyph = spacing
+	return f
+
+
 static func fmt_time(t: float) -> String:
 	return "%02d:%02d" % [int(t) / 60, int(t) % 60]

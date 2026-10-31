@@ -22,6 +22,9 @@ scripts/
   gem.gd       malzeme pickup
   recycle_bin.gd
   mesh_factory.gd  mesh/material cache
+  world_builder.gd Antalya sahili haritası (oyun + menü ortak), menü için gün batımı ışığı
+  menu_backdrop.gd ana menünün canlı 3D arka planı (dönen kamera, kahraman, kutular, canavarlar)
+  main_menu.gd     sol menü kolonu, sağda ayrıştırma ve "Biliyor muydun?" kartları, Nasıl Oynanır penceresi
   weapons/     weapon.gd (base) + 6 silah
   ui/          ui_kit.gd, hud.gd, level_up.gd, pause_menu.gd, end_screen.gd
 ```
@@ -38,5 +41,8 @@ scripts/
 
 ## Yerelleştirme
 Basit sözlük tabanlı `Loc.t(key)` ve veri içi `{"tr":..,"en":..}` + `Loc.pick(dict)`. Dil değişince `language_changed` sinyali yayılıyor.
+
+> [!warning] Büyük harf
+> `String.to_upper()` Türkçe kuralını bilmez ("Biliyor" → "BILIYOR"). Her zaman `Loc.upper()` kullan.
 
 İlgili notlar: [[Görev Panosu]]
