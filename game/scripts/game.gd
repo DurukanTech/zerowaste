@@ -226,7 +226,7 @@ func _late_shots(dir: String, prev: float) -> void:
 		spawn_enemy("box", player.position + Vector3(4, 0, 2), -1.0, true)
 		return
 	if elapsed >= 383.0 and prev < 383.0:
-		level_ui._choices = [{"kind": "evolve", "id": "solar", "level": 6}, {"kind": "weapon", "id": "tree", "level": 1}, {"kind": "passive", "id": "seeds", "level": 1}]
+		level_ui._choices = [{"kind": "evolve", "id": "solar", "level": 6}, {"kind": "weapon", "id": "boomerang", "level": 1}, {"kind": "passive", "id": "repair", "level": 1}]
 		level_ui._build()
 		level_ui.visible = true
 	if elapsed >= 383.7 and prev < 383.7:

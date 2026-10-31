@@ -134,6 +134,15 @@ func _animate_in(title: Label, hb: HBoxContainer) -> void:
 	title.pivot_offset = title.size * 0.5
 	title.scale = Vector2(1.4, 1.4)
 	title.create_tween().tween_property(title, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# the card content sits in a non-container Button, so grow every card to
+	# fit the tallest content (long names / descriptions wrap to more lines)
+	var tallest := 0.0
+	for c in hb.get_children():
+		for k in c.get_children():
+			if k is MarginContainer:
+				tallest = maxf(tallest, k.get_combined_minimum_size().y)
+	for c in hb.get_children():
+		c.custom_minimum_size.y = maxf(c.custom_minimum_size.y, tallest)
 	for i in hb.get_child_count():
 		var c: Control = hb.get_child(i)
 		c.pivot_offset = c.size * 0.5
@@ -263,7 +272,7 @@ func _card(i: int, c: Dictionary) -> Button:
 	top.add_child(kp)
 
 	v.add_child(UI.gap(8))
-	var nl := UI.wrap_label(name_txt, 26, color.lightened(0.25), 264)
+	var nl := UI.wrap_label(name_txt, 24, color.lightened(0.25), 264)
 	nl.add_theme_font_override("font", UI.font(0.7, 1))
 	v.add_child(nl)
 	v.add_child(UI.wrap_label(desc, 18, Color(1, 1, 1, 0.92), 264))
