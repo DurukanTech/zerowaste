@@ -46,6 +46,9 @@ scripts/
 - Düşmanlar **CharacterBody değil**, düz `Node3D`. Hepsi tek bir döngüde `game.gd` içinden güncelleniyor.
 - **Uzamsal grid** (hücre = 2 birim): Ayrıştırma (separation) ve silah sorguları sadece komşu hücrelere bakıyor. Bosslar grid dışında tutulup ayrıca kontrol ediliyor.
 - Mesh ve material'lar `mesh_factory.gd` içinde cache'leniyor ve paylaşılıyor.
+- **Toplu çizim (`batch_renderer.gd`):** Normal düşmanlar, elitler ve malzemeler kendi MeshInstance'larını oluşturmaz. `game._draw_batches()` her karede **sadece kamera alanındakileri** tür/katman başına bir MultiMesh'e yazar. Vurulan düşman, aynı türün "flash" grubuna geçer. Bosslar ve menü arka planı eski yolu kullanır (`use_batch` bayrağı).
+- **Ucuz gölgeler:** Normal düşmanlar gölge düşürmez, altlarında tek MultiMesh'lik blob gölge vardır. Güneş gölgesi tek bölümlüdür (`SHADOW_ORTHOGONAL`, 40 m).
+- **Düşman döngüsü:** Izgara tamsayı anahtarlı. Düşmanlar arası itme, karenin başında alınan konum dizilerinden okunur ve her karede düşmanların yarısına sırayla uygulanır. Ekran dışındaki düşmanlar animasyon hesaplamaz.
 - **Görsel overhaul:** Her model `ModelBuilder` ile tek mesh'e birleştiriliyor. Normal düşmanlar 1-2 draw call, oyuncu 6 parça (yürüme animasyonu için ayrı uzuvlar), harita dekoru chunk başına tek mesh, çim öbekleri tek MultiMesh.
 - **Işık:** Güneş (2 split, yumuşak gölge), soğuk dolgu ışığı, rim'li materyaller, glow (bloom), hafif kontrast/doygunluk.
 - **Efektler:** Vuruş kıvılcımları ve ölüm patlamaları havuzlu (sınırsız sayıda node üretmez). Vuruş parlaması boss'ları sürekli beyaz bırakmasın diye 0.16 sn'de bir sınırlı.

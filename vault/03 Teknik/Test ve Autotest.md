@@ -69,6 +69,19 @@ Autotest her 30 sn'de bir `[balance]` satırı da basar: sandık kaynakları, ö
 | Mini boss | 45 sn | 41 sn (can 1570, güç 29) |
 | Final boss | 29–138 sn | 109–211 sn (pilot bossa saldırmıyor, kutulara yürüyor) |
 
+## Performans optimizasyonu (2026-10-31, pencereli, 150–300 düşman)
+Autotest her 30 sn'de bir `[perf]` satırı basar: bölüm başına ms/kare (enemies, weapons, gems, draw, hud, other), draw call, obje ve üçgen sayısı.
+
+| | Önce | Sonra |
+|---|---|---|
+| Draw call | 600–1100 | 420–600 |
+| Üçgen / kare | 0,55–1,1 M | 0,36–0,54 M |
+| Düşman mantığı | 2,4–5,8 ms | 1,9–3,3 ms |
+| Toplu çizim hazırlığı | — | 1,2–1,8 ms |
+| Toplam mantık | 4–7 ms | 4,2–6,2 ms |
+
+İlk denemede tüm düşmanlar her karede yazılıyordu ve çizim hazırlığı 2–5 ms tutuyordu. Kamera alanı dışındakileri atlamak bunu 1,2–1,8 ms'ye indirdi.
+
 > [!note] Kare hızını en çok etkileyen şey ekrandaki malzeme sayısı (her biri 1 draw call). Gerekirse malzemeler MultiMesh'e taşınabilir.
 
 > [!note] Autotest ölümsüz olduğu için zorluk ölçmez

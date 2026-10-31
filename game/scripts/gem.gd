@@ -13,6 +13,10 @@ var magnet := false
 var pull_speed := 0.0
 var _t := 0.0
 var _mesh: MeshInstance3D
+var _size := 1.0
+var draw_key := ""
+var draw_mat: Material
+var use_batch := false  # set by game.gd; the menu backdrop draws its own meshes
 
 
 static func _mesh_for(t: String) -> Mesh:
@@ -44,17 +48,35 @@ func setup(t: String, v: float) -> void:
 	mat_type = t
 	value = v
 	_t = randf() * TAU
-	var mat := MF.vc_mat() if t == "heal" else MF.vc_mat(false, 1.4)
+	_size = 1.5 if v >= 4.0 or t == "chest" else 1.0
 	if t == "chest":
-		mat = MF.vc_mat(false, 0.6)
-		var beam := MF.inst(MF.cyl_mesh(0.05, 0.3, 6.0), MF.glow_mat(Color(1.0, 0.85, 0.35, 0.3), 2.0), self, Vector3(0, 3.0, 0), false)
-		beam.name = "Beam"
-	_mesh = MF.inst(_mesh_for(t), mat, self, Vector3(0, 0.45, 0), false)
-	if v >= 4.0 or t == "chest":
-		_mesh.scale = Vector3.ONE * 1.5
+		MF.inst(MF.cyl_mesh(0.05, 0.3, 6.0), MF.glow_mat(Color(1.0, 0.85, 0.35, 0.3), 2.0), self, Vector3(0, 3.0, 0), false)
+	if use_batch and t != "chest":
+		draw_key = "gem|" + t
+		draw_mat = material_for(t)
+		return  # drawn in bulk by game._draw_batches
+	_mesh = MF.inst(_mesh_for(t), material_for(t), self, Vector3(0, 0.45, 0), false)
+	_mesh.scale = Vector3.ONE * _size
+
+
+static func material_for(t: String) -> Material:
+	if t == "heal":
+		return MF.vc_mat()
+	return MF.vc_mat(false, 0.6 if t == "chest" else 1.4)
+
+
+func mesh_for() -> Mesh:
+	return _mesh_for(mat_type)
 
 
 func animate(delta: float) -> void:
 	_t += delta
-	_mesh.rotation.y = _t * 2.5
-	_mesh.position.y = 0.45 + sin(_t * 3.0) * 0.1
+	if _mesh:
+		_mesh.rotation.y = _t * 2.5
+		_mesh.position.y = 0.45 + sin(_t * 3.0) * 0.1
+
+
+## World transform of the spinning, bobbing crystal (for batched drawing).
+func mesh_transform() -> Transform3D:
+	var b := Basis(Vector3.UP, _t * 2.5).scaled(Vector3.ONE * _size)
+	return Transform3D(b, position + Vector3(0, 0.45 + sin(_t * 3.0) * 0.1, 0))

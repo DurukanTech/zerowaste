@@ -23,6 +23,12 @@ var phase := 1
 var dead := false
 var slow_t := 0.0
 var move_override = null  # Vector3 while charging
+var use_batch := false  # set by game.gd; the menu backdrop draws its own meshes
+var batched := false    # drawn by the game's BatchRenderer instead of own meshes
+var glow_on := true
+var draw_model := {}     # cached by game._draw_batches
+var draw_keys: Array = []
+var blob_r := 0.0        # blob shadow radius
 
 var _flash := 0.0
 var _flash_cd := 0.0
@@ -63,6 +69,7 @@ func setup(k: String, hp_scale: float, dmg_scale: float, is_elite := false) -> v
 	_build_visual()
 	if is_elite and not is_boss:
 		_make_elite()
+	blob_r = radius * 1.6 * (1.4 if elite else 1.0)
 
 
 ## Elite variant: much tougher, bigger, golden aura, drops a reward crate.
@@ -90,6 +97,10 @@ func _make_elite() -> void:
 
 
 func _add_model(parent: Node3D, model_kind: String, shadows := true) -> void:
+	if use_batch and not is_boss:
+		# regular monsters are drawn in bulk (see game._draw_batches)
+		batched = true
+		return
 	var m := Models.get_model(model_kind)
 	if m.opaque:
 		_track(MF.inst(m.opaque, MF.vc_mat(), parent, Vector3.ZERO, shadows))
@@ -140,6 +151,15 @@ func _add_name_label(h: float) -> void:
 	add_child(l)
 
 
+func is_flashing() -> bool:
+	return _flashing
+
+
+## World transform of the animated body (for batched drawing).
+func body_transform() -> Transform3D:
+	return transform * _body.transform
+
+
 func hit_flash() -> void:
 	# rate-limited so constantly-hit bosses don't stay lit up permanently
 	if _flash_cd > 0.0:
@@ -168,6 +188,11 @@ func think(delta: float, game) -> void:
 		speed_mult = 1.0
 	_anim_t += delta
 	var s := _base_scale
+	# pure animation is skipped for monsters well outside the camera view
+	if kind in ["bag", "bottle", "battery", "rot", "rot_small", "box"]:
+		var pp: Vector3 = game.player.position
+		if absf(position.x - pp.x) > 24.0 or absf(position.z - pp.z) > 20.0:
+			return
 	if kind == "miniboss" or kind == "boss":
 		var p := 1
 		if kind == "boss":
@@ -185,8 +210,9 @@ func think(delta: float, game) -> void:
 		"bottle", "battery":
 			_body.rotation.z = sin(_anim_t * 9.0) * 0.14
 			_body.position.y = absf(sin(_anim_t * 9.0)) * 0.06
+			glow_on = int(_anim_t * 10.0) % 2 == 0
 			if _glow:
-				_glow.visible = int(_anim_t * 10.0) % 2 == 0
+				_glow.visible = glow_on
 		"rot", "rot_small":
 			var q := sin(_anim_t * 6.0) * 0.08
 			_body.scale = Vector3(s * (1.0 + q), s * (1.0 - q), s)

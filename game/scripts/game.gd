@@ -16,6 +16,8 @@ const Hazards = preload("res://scripts/hazards.gd")
 const Sorting = preload("res://scripts/sorting.gd")
 const Quests = preload("res://scripts/quests.gd")
 const Events = preload("res://scripts/events.gd")
+const BatchRenderer = preload("res://scripts/batch_renderer.gd")
+const Models = preload("res://scripts/enemy_models.gd")
 
 const CELL := 2.0
 const MAX_GEMS := 400
@@ -37,7 +39,12 @@ var enemies: Array = []
 var bosses: Array = []
 var gems: Array = []
 var bins: Array = []
-var grid := {}
+var grid := {}            # int cell key -> Array of indices into the arrays below
+var _gpos := PackedVector3Array()   # enemy positions at the start of the frame
+var _grad := PackedFloat32Array()   # enemy radii
+var _gent: Array = []               # enemy objects
+var batches
+var _bkeys := {}          # enemy kind -> precomputed batch keys
 
 var elapsed := 0.0
 var kills := 0
@@ -65,6 +72,7 @@ var stat_chests := {}
 var stat_elites := 0
 var stat_pool_empty := -1.0
 var _stat_k := 0
+var _prof_us := {}
 var stat_taken := 0.0
 var _stat_one := 0
 
@@ -98,6 +106,8 @@ func _ready() -> void:
 	hazards = Hazards.new()
 	hazards.game = self
 	add_child(hazards)
+	batches = BatchRenderer.new()
+	add_child(batches)
 	player = Player.new()
 	player.game = self
 	player.scale = Vector3.ONE * 1.25
@@ -151,16 +161,25 @@ func _process(delta: float) -> void:
 	events.tick(delta)
 	_spawn_logic(delta)
 	player.tick(delta)
+	_prof("other", t0)
+	var t := Time.get_ticks_usec()
 	_update_enemies(delta)
+	t = _prof("enemies", t)
 	for w in player.weapons:
 		w.tick(delta)
+	t = _prof("weapons", t)
 	hazards.tick(delta)
 	_update_gems(delta)
+	t = _prof("gems", t)
 	sorting.tick(delta)
 	quests.tick(delta)
 	_cleanup_dead()
 	_update_camera(delta)
+	t = _prof("other", t)
+	_draw_batches()
+	t = _prof("draw", t)
 	hud.refresh(delta)
+	_prof("hud", t)
 	if autotest:
 		_autotest_report(delta, (Time.get_ticks_usec() - t0) / 1000.0)
 		_autotest_shots()
@@ -264,6 +283,14 @@ func _gallery(kind: String, pos: Vector3) -> void:
 	e._special_t = 999.0
 
 
+## Autotest profiler: accumulates microseconds per section, returns "now".
+func _prof(key: String, since: int) -> int:
+	var now := Time.get_ticks_usec()
+	if autotest:
+		_prof_us[key] = _prof_us.get(key, 0) + now - since
+	return now
+
+
 func _autotest_report(delta: float, ms: float) -> void:
 	player.hp = player.max_hp
 	_perf_acc += ms
@@ -280,6 +307,13 @@ func _autotest_report(delta: float, ms: float) -> void:
 		_perf_real = now
 		print("[autotest] t=%s lv=%d enemies=%d gems=%d kills=%d logic_ms avg=%.2f worst=%.2f fps=%.0f weapons=%s" % [
 			int(elapsed), player.level, enemies.size(), gems.size(), kills, _perf_acc / _perf_frames, _perf_worst, fps, w])
+		var parts := []
+		for k in _prof_us:
+			parts.append("%s=%.2f" % [k, _prof_us[k] / 1000.0 / maxi(1, _perf_frames)])
+		print("[perf] t=%d ms/frame %s | draw_calls=%d objects=%d prims=%dk" % [int(elapsed), " ".join(parts),
+			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+			Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME) / 1000])
+		_prof_us.clear()
 		print("[balance] t=%d passives=%s chests=%s elites_killed=%d pool_empty_at=%.0f oneshot=%d%% dmg_taken=%d" % [int(elapsed), player.passives, stat_chests, stat_elites, stat_pool_empty, 100 * _stat_one / maxi(1, _stat_k), int(stat_taken)])
 		stat_taken = 0.0
 		_stat_k = 0
@@ -398,6 +432,7 @@ func spawn_ring(kind: String, count: int, r: float) -> void:
 func spawn_enemy(kind: String, pos: Vector3, hp_override := -1.0, elite := false):
 	var m := elapsed / 60.0
 	var e = Enemy.new()
+	e.use_batch = true
 	var hp_scale := hp_override if hp_override > 0.0 else hp_scale_at(m)
 	if kind == "miniboss":
 		hp_scale = clampf(player.power_score() / 24.0, 0.75, 1.4)
@@ -423,28 +458,45 @@ func spawn_enemy(kind: String, pos: Vector3, hp_override := -1.0, elite := false
 
 # --- enemy manager -----------------------------------------------------------
 
-func _cell(p: Vector3) -> Vector2i:
-	return Vector2i(floori(p.x / CELL), floori(p.z / CELL))
+## Packs a grid cell into one int (dictionary lookups on ints are much
+## cheaper than on Vector2i).
+static func _key(ix: int, iz: int) -> int:
+	return (ix + 4096) * 8192 + (iz + 4096)
 
 
 func _update_enemies(delta: float) -> void:
 	grid.clear()
+	var n := enemies.size()
+	_gpos.resize(n)
+	_grad.resize(n)
+	_gent.resize(n)
+	var m := 0
 	for e in enemies:
 		if e.dead or e.is_boss:
 			continue
-		var k := _cell(e.position)
+		var p: Vector3 = e.position
+		_gpos[m] = p
+		_grad[m] = e.radius
+		_gent[m] = e
+		var k := _key(floori(p.x / CELL), floori(p.z / CELL))
 		var arr = grid.get(k)
 		if arr == null:
-			grid[k] = [e]
+			grid[k] = [m]
 		else:
-			arr.append(e)
+			arr.append(m)
+		m += 1
 	var ppos: Vector3 = player.position
 	var smog: float = events.enemy_speed_mult()
+	# separation runs on half the crowd each frame (alternating), twice as strong
+	var parity := Engine.get_process_frames() % 2
+	var idx := 0
 	for e in enemies:
 		if e.dead:
 			continue
+		idx += 1
 		e.think(delta, self)
-		var to_p: Vector3 = ppos - e.position
+		var ep: Vector3 = e.position
+		var to_p: Vector3 = ppos - ep
 		to_p.y = 0.0
 		var dist := to_p.length()
 		var dir := to_p / maxf(dist, 0.001)
@@ -454,33 +506,36 @@ func _update_enemies(delta: float) -> void:
 		else:
 			vel = dir * e.speed * e.speed_mult * smog
 		var sep := Vector3.ZERO
-		if not e.is_boss:
-			var c := _cell(e.position)
-			for ix in range(c.x - 1, c.x + 2):
-				for iz in range(c.y - 1, c.y + 2):
-					var arr = grid.get(Vector2i(ix, iz))
+		if not e.is_boss and idx % 2 == parity:
+			var er: float = e.radius
+			var cx := floori(ep.x / CELL)
+			var cz := floori(ep.z / CELL)
+			for ix in range(cx - 1, cx + 2):
+				for iz in range(cz - 1, cz + 2):
+					var arr = grid.get(_key(ix, iz))
 					if arr == null:
 						continue
-					for o in arr:
-						if o == e:
-							continue
-						var d: Vector3 = e.position - o.position
-						d.y = 0.0
-						var rr: float = e.radius + o.radius
-						var l2 := d.length_squared()
+					for j in arr:
+						var op := _gpos[j]
+						var dx := ep.x - op.x
+						var dz := ep.z - op.z
+						var l2 := dx * dx + dz * dz
+						var rr := er + _grad[j]
 						if l2 < rr * rr and l2 > 0.0001:
 							var l := sqrt(l2)
-							sep += d / l * (rr - l)
+							var push := (rr - l) / l
+							sep.x += dx * push
+							sep.z += dz * push
 			for b in bosses:
-				var d: Vector3 = e.position - b.position
+				var d: Vector3 = ep - b.position
 				d.y = 0.0
-				var rr: float = e.radius + b.radius
+				var rr: float = er + b.radius
 				var l := d.length()
 				if l < rr and l > 0.001:
 					sep += d / l * (rr - l) * 2.0
-		e.position += (vel + e.knock) * delta + sep * 0.35
+		ep += (vel + e.knock) * delta + sep * 0.6
 		e.knock = e.knock.lerp(Vector3.ZERO, minf(1.0, 8.0 * delta))
-		e.position = clamp_arena(e.position)
+		e.position = clamp_arena(ep)
 		if dist > 0.01 and e.speed > 0.0:
 			e.rotation.y = lerp_angle(e.rotation.y, atan2(dir.x, dir.z), minf(1.0, 10.0 * delta))
 		# contact damage
@@ -491,6 +546,50 @@ func _update_enemies(delta: float) -> void:
 				player.hurt(e.damage * delta)
 		elif dist > 45.0 and not e.is_boss:
 			e.position = spawn_pos()
+
+
+## Regular enemies and materials are drawn through MultiMeshes; a hit
+## enemy moves to the "flash" batch of its kind for the flash duration.
+func _draw_batches() -> void:
+	batches.begin()
+	var vc: Material = MF.vc_mat()
+	var vca: Material = MF.vc_mat(true)
+	var flash: Material = MF.flash_mat()
+	var glow: Material = MF.vc_mat(false, 4.0)
+	# only what the camera can see (it looks down at the player from +Z)
+	var pp: Vector3 = player.position
+	var x0 := pp.x - 25.0
+	var x1 := pp.x + 25.0
+	var z0 := pp.z - 21.0
+	var z1 := pp.z + 15.0
+	for e in enemy_root.get_children():
+		if not e.batched:
+			continue
+		var ep: Vector3 = e.position
+		if ep.x < x0 or ep.x > x1 or ep.z < z0 or ep.z > z1:
+			continue
+		var model: Dictionary = e.draw_model
+		if model.is_empty():
+			model = Models.get_model(e.kind)
+			e.draw_model = model
+			e.draw_keys = [e.kind + "|o", e.kind + "|of", e.kind + "|a", e.kind + "|af", e.kind + "|g"]
+		var keys: Array = e.draw_keys
+		var xf: Transform3D = e.transform * e._body.transform
+		var fl: bool = e._flashing
+		if model.opaque:
+			batches.add(keys[1] if fl else keys[0], model.opaque, flash if fl else vc, xf)
+		if model.alpha:
+			batches.add(keys[3] if fl else keys[2], model.alpha, flash if fl else vca, xf)
+		if model.glow and e.glow_on:
+			batches.add(keys[4], model.glow, glow, xf)
+		batches.blob(ep, e.blob_r * e.scale.x)
+	for g in gems:
+		var gp: Vector3 = g.position
+		if gp.x < x0 or gp.x > x1 or gp.z < z0 or gp.z > z1:
+			continue
+		if g.use_batch and g.mat_type != "chest":
+			batches.add(g.draw_key, g.mesh_for(), g.draw_mat, g.mesh_transform())
+	batches.end()
 
 
 func _explode(e) -> void:
@@ -504,14 +603,17 @@ func _explode(e) -> void:
 func enemies_near(pos: Vector3, r: float) -> Array:
 	var out := []
 	var reach := r + 0.7  # max regular enemy radius
-	var c0 := _cell(pos - Vector3(reach, 0, reach))
-	var c1 := _cell(pos + Vector3(reach, 0, reach))
-	for ix in range(c0.x, c1.x + 1):
-		for iz in range(c0.y, c1.y + 1):
-			var arr = grid.get(Vector2i(ix, iz))
+	var x0 := floori((pos.x - reach) / CELL)
+	var x1 := floori((pos.x + reach) / CELL)
+	var z0 := floori((pos.z - reach) / CELL)
+	var z1 := floori((pos.z + reach) / CELL)
+	for ix in range(x0, x1 + 1):
+		for iz in range(z0, z1 + 1):
+			var arr = grid.get(_key(ix, iz))
 			if arr == null:
 				continue
-			for e in arr:
+			for j in arr:
+				var e = _gent[j]
 				if e.dead:
 					continue
 				var rr: float = r + e.radius
@@ -529,17 +631,19 @@ func nearest_enemy(pos: Vector3, max_dist: float):
 	var best = null
 	var best_d := max_dist * max_dist
 	# search outward in rings of cells for speed
-	var c := _cell(pos)
+	var cx := floori(pos.x / CELL)
+	var cz := floori(pos.z / CELL)
 	var max_ring := int(ceil(max_dist / CELL))
 	for ring in range(0, max_ring + 1):
-		for ix in range(c.x - ring, c.x + ring + 1):
-			for iz in range(c.y - ring, c.y + ring + 1):
-				if absi(ix - c.x) != ring and absi(iz - c.y) != ring:
+		for ix in range(cx - ring, cx + ring + 1):
+			for iz in range(cz - ring, cz + ring + 1):
+				if absi(ix - cx) != ring and absi(iz - cz) != ring:
 					continue
-				var arr = grid.get(Vector2i(ix, iz))
+				var arr = grid.get(_key(ix, iz))
 				if arr == null:
 					continue
-				for e in arr:
+				for j in arr:
+					var e = _gent[j]
 					if e.dead:
 						continue
 					var d := _flat_dist_sq(e.position, pos)
@@ -639,6 +743,7 @@ func spawn_gem(pos: Vector3, mat_type: String, value: float) -> void:
 		player.add_xp(old.value)
 		old.queue_free()
 	var g = Gem.new()
+	g.use_batch = true
 	g.setup(mat_type, value)
 	gem_root.add_child(g)
 	g.position = Vector3(pos.x, 0, pos.z)

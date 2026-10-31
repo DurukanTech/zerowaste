@@ -121,8 +121,9 @@ static func setup_environment(parent: Node3D, golden := false) -> Environment:
 	sun.shadow_enabled = true
 	sun.shadow_blur = 1.5
 	sun.shadow_opacity = 0.8
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
-	sun.directional_shadow_max_distance = 50.0
+	# one shadow split: half the shadow draw calls of PARALLEL_2_SPLITS
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	sun.directional_shadow_max_distance = 40.0
 	# cool sky fill from the opposite side so shadowed faces are not flat
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-35, 140, 0)
