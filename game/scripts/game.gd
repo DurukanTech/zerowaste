@@ -44,7 +44,6 @@ var _gpos := PackedVector3Array()   # enemy positions at the start of the frame
 var _grad := PackedFloat32Array()   # enemy radii
 var _gent: Array = []               # enemy objects
 var batches
-var _bkeys := {}          # enemy kind -> precomputed batch keys
 
 var elapsed := 0.0
 var kills := 0
@@ -216,6 +215,9 @@ func _autotest_shots() -> void:
 		if elapsed > 3.3:
 			get_tree().quit()
 		return
+	if OS.get_cmdline_user_args().has("--tour"):
+		_tour_shots(dir, prev)
+		return
 	if OS.get_cmdline_user_args().has("--late"):
 		_late_shots(dir, prev)
 		return
@@ -238,6 +240,25 @@ func _autotest_shots() -> void:
 		if elapsed >= mark and prev < mark:
 			get_viewport().get_texture().get_image().save_png(dir.path_join("shot_%d.png" % int(mark)))
 	if elapsed > 161.0:
+		get_tree().quit()
+
+
+## `--tour`: no enemies; hops the player around the map and photographs
+## each spot (tour_0.png ...), for checking the environment.
+const TOUR := [Vector3(0, 0, 0), Vector3(-40, 0, -35), Vector3(40, 0, -35), Vector3(-45, 0, 25), Vector3(45, 0, 25), Vector3(0, 0, 50), Vector3(-70, 0, -10), Vector3(0, 0, -68)]
+
+
+func _tour_shots(dir: String, prev: float) -> void:
+	_spawn_acc = -100000.0
+	_next_elite = 100000.0
+	for i in TOUR.size():
+		var t := 0.4 + i * 0.6
+		if elapsed >= t and prev < t:
+			player.position = TOUR[i]
+			camera.position = player.position + CAM_OFFSET
+		if elapsed >= t + 0.45 and prev < t + 0.45:
+			get_viewport().get_texture().get_image().save_png(dir.path_join("tour_%d.png" % i))
+	if elapsed > 0.4 + TOUR.size() * 0.6:
 		get_tree().quit()
 
 

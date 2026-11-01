@@ -6,50 +6,208 @@ extends RefCounted
 const MF = preload("res://scripts/mesh_factory.gd")
 const ModelBuilder = preload("res://scripts/model_builder.gd")
 const Spinner = preload("res://scripts/spinner.gd")
+const Zones = preload("res://scripts/world_zones.gd")
+const Ambient = preload("res://scripts/ambient.gd")
 
 const CHUNK := 40.0
 const PATH_COLOR := Color(0.7, 0.64, 0.55)
 
-const GRASS_SHADER := """
-shader_type spatial;
-uniform vec4 lush : source_color;
-uniform vec4 deep : source_color;
-uniform vec4 dry : source_color;
+## Shared GLSL helpers: value noise and drifting cloud shadows.
+const LIB := """
 varying vec3 wpos;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
 }
+// round dots on a jittered grid: 1 inside a dot, 0 elsewhere
+float dots(vec2 p, float density, float size) {
+	vec2 c = floor(p);
+	vec2 o = vec2(hash(c + 3.1), hash(c + 7.7)) * 0.6 + 0.2;
+	return step(1.0 - density, hash(c)) * smoothstep(size, size * 0.6, length(fract(p) - o));
+}
+float clouds(vec2 p) {
+	vec2 q = p * 0.016 + vec2(TIME * 0.011, TIME * 0.005);
+	float n = noise(q) * 0.6 + noise(q * 2.3 + 5.0) * 0.4;
+	return smoothstep(0.5, 0.72, n);
+}
+"""
+
+## Park lawn: layered tones, clover, tiny flowers, worn dirt/gravel paths
+## (segments passed as uniforms) and cloud shadows.
+const GRASS_SHADER := """
+shader_type spatial;
+uniform vec4 lush : source_color;
+uniform vec4 deep : source_color;
+uniform vec4 dry : source_color;
+uniform vec4 dirt : source_color;
+uniform vec4 gravel : source_color;
+uniform vec4 segs[32];
+uniform int seg_count = 0;
+uniform float path_w = 1.3;
+""" + LIB + """
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+float seg_d(vec2 p, vec2 a, vec2 b) {
+	vec2 pa = p - a; vec2 ba = b - a;
+	float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+	return length(pa - ba * h);
+}
 void fragment() {
-	float n = noise(wpos.xz * 0.07) * 0.55 + noise(wpos.xz * 0.3) * 0.3 + noise(wpos.xz * 2.1) * 0.15;
+	vec2 p = wpos.xz;
+	float n = noise(p * 0.07) * 0.55 + noise(p * 0.3) * 0.3 + noise(p * 2.1) * 0.15;
 	vec3 col = mix(deep.rgb, lush.rgb, n);
-	col = mix(col, dry.rgb, smoothstep(0.62, 0.85, noise(wpos.xz * 0.045 + 13.0)) * 0.7);
-	col *= 0.94 + step(0.5, fract(wpos.x / 7.0)) * 0.07;
+	col = mix(col, dry.rgb, smoothstep(0.62, 0.85, noise(p * 0.045 + 13.0)) * 0.55);
+	// darker clover clumps and blade texture
+	col = mix(col, deep.rgb * 0.85, smoothstep(0.68, 0.8, noise(p * 0.85 + 40.0)) * 0.35);
+	col *= 0.93 + noise(p * 9.0) * 0.1;
+	// tiny white / yellow flowers
+	vec2 fc = floor(p * 2.5);
+	if (hash(fc) > 0.982) {
+		float r = length(fract(p * 2.5) - 0.5);
+		vec3 petal = hash(fc + 7.0) > 0.5 ? vec3(1.0, 0.98, 0.92) : vec3(1.0, 0.82, 0.22);
+		col = mix(col, petal, smoothstep(0.2, 0.1, r));
+	}
+	col *= 0.97 + step(0.5, fract(p.x / 7.0)) * 0.035;
+	// dirt and gravel paths with a soft, wobbly worn edge
+	float d = 1e5;
+	for (int i = 0; i < seg_count; i++) {
+		d = min(d, seg_d(p, segs[i].xy, segs[i].zw));
+	}
+	d += (noise(p * 0.9) - 0.5) * 0.45;
+	float on_path = smoothstep(path_w + 0.25, path_w - 0.15, d);
+	vec3 pc = dirt.rgb * (0.9 + noise(p * 1.4) * 0.16 + noise(p * 6.0) * 0.06);
+	pc = mix(pc, gravel.rgb, dots(p * 6.0, 0.45, 0.28) * 0.6);
+	pc = mix(pc, dirt.rgb * 0.7, dots(p * 4.0 + 9.0, 0.25, 0.22) * 0.5);
+	float worn = smoothstep(path_w + 1.2, path_w + 0.2, d) * (1.0 - on_path);
+	col = mix(col, mix(col, dirt.rgb, 0.45), worn);
+	col = mix(col, pc, on_path);
+	col *= 1.0 - clouds(p) * 0.17;
 	ALBEDO = col;
 	ROUGHNESS = 0.95;
 	SPECULAR = 0.15;
 }
 """
 
+## Running-bond paving with a lighter curb band at the plane edges.
 const PAVING_SHADER := """
 shader_type spatial;
 uniform vec4 stone : source_color;
 uniform vec4 grout : source_color;
-varying vec3 wpos;
-float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+uniform vec2 brick = vec2(0.9, 0.6);
+""" + LIB + """
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
-	vec2 p = wpos.xz / vec2(0.9, 0.6);
+	vec2 p = wpos.xz / brick;
 	p.x += step(1.0, mod(floor(p.y), 2.0)) * 0.5;
 	vec2 cell = floor(p);
 	vec2 f = fract(p);
 	float edge = min(min(f.x, 1.0 - f.x) * 0.9, min(f.y, 1.0 - f.y) * 0.6);
 	float g = smoothstep(0.02, 0.05, edge);
-	vec3 col = stone.rgb * (0.88 + hash(cell) * 0.2);
-	ALBEDO = mix(grout.rgb, col, g);
+	vec3 col = stone.rgb * (0.86 + hash(cell) * 0.2) * (0.95 + noise(wpos.xz * 0.4) * 0.08);
+	col = mix(grout.rgb, col, g);
+	// curb: brighter stone along the outer rim of the paved strip
+	vec2 uv = abs(UV - 0.5) * 2.0;
+	col = mix(col, vec3(0.86, 0.84, 0.8), step(0.985, max(uv.x, uv.y)));
+	col *= 1.0 - clouds(wpos.xz) * 0.17;
+	ALBEDO = col;
 	ROUGHNESS = 0.85;
+}
+"""
+
+## Round plaza: concentric stone rings with radial joints, discarded outside.
+const PLAZA_SHADER := """
+shader_type spatial;
+uniform vec4 stone : source_color;
+uniform vec4 accent : source_color;
+uniform vec4 grout : source_color;
+uniform float radius = 13.0;
+""" + LIB + """
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec2 c = (UV - 0.5) * 2.0 * radius;
+	float r = length(c);
+	if (r > radius) discard;
+	float ring = floor(r / 1.1);
+	float ang = atan(c.y, c.x);
+	float segs = max(6.0, floor(ring * 6.5));
+	float a = ang / 6.2832 * segs + ring * 0.5;
+	float fr = fract(r / 1.1);
+	float fa = fract(a);
+	float g = smoothstep(0.02, 0.07, min(min(fr, 1.0 - fr), min(fa, 1.0 - fa) * (r / 6.0 + 0.3)));
+	vec3 col = (mod(ring, 4.0) == 1.0 ? accent.rgb : stone.rgb) * (0.88 + hash(vec2(ring, floor(a))) * 0.18);
+	col = mix(grout.rgb, col, g);
+	col = mix(col, vec3(0.9, 0.88, 0.84), smoothstep(radius - 0.6, radius - 0.45, r));
+	col *= 1.0 - clouds(wpos.xz) * 0.17;
+	ALBEDO = col;
+	ROUGHNESS = 0.85;
+}
+"""
+
+## Generic textured ground (mulch, rubber, sand-pit): noise + speckle.
+const GROUND_SHADER := """
+shader_type spatial;
+uniform vec4 base : source_color;
+uniform vec4 speck : source_color;
+uniform float grain = 6.0;
+uniform float speck_amt = 0.3;
+""" + LIB + """
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec2 p = wpos.xz;
+	vec3 col = base.rgb * (0.88 + noise(p * 0.6) * 0.2);
+	col = mix(col, speck.rgb, dots(p * grain, speck_amt, 0.3) * 0.7);
+	col *= 1.0 - clouds(p) * 0.17;
+	ALBEDO = col;
+	ROUGHNESS = 0.95;
+}
+"""
+
+## Basketball court: rubber surface with white lines (court is 22 x 13).
+const COURT_SHADER := """
+shader_type spatial;
+uniform vec4 inner : source_color;
+uniform vec4 outer : source_color;
+""" + LIB + """
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+float line(float d, float w) { return smoothstep(w, w * 0.5, abs(d)); }
+void fragment() {
+	vec2 c = (UV - 0.5) * vec2(22.0, 13.0);
+	vec2 a = abs(c);
+	bool in_court = a.x < 10.0 && a.y < 5.5;
+	vec3 col = in_court ? inner.rgb : outer.rgb;
+	col *= 0.93 + noise(wpos.xz * 2.0) * 0.1;
+	float l = 0.0;
+	l = max(l, line(max(a.x - 10.0, a.y - 5.5), 0.07) * step(max(a.x - 10.0, a.y - 5.5), 0.1));
+	l = max(l, line(c.x, 0.07) * step(a.y, 5.5));
+	l = max(l, line(length(c) - 1.6, 0.07));
+	vec2 k = vec2(10.0 - a.x, c.y);
+	l = max(l, line(length(k) - 6.0, 0.07) * step(a.x, 10.0) * step(10.0 - 6.0, a.x));
+	l = max(l, line(length(k - vec2(4.6, 0.0)) - 1.6, 0.07) * step(0.0, k.x));
+	col = mix(col, vec3(0.97), l);
+	col *= 1.0 - clouds(wpos.xz) * 0.17;
+	ALBEDO = col;
+	ROUGHNESS = 0.8;
+}
+"""
+
+## Wooden boardwalk planks running along X.
+const PLANK_SHADER := """
+shader_type spatial;
+uniform vec4 wood : source_color;
+""" + LIB + """
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec2 p = wpos.xz;
+	float row = floor(p.y / 0.32);
+	float seg = floor((p.x + hash(vec2(row, 3.0)) * 4.0) / 3.2);
+	float fy = fract(p.y / 0.32);
+	float fx = fract((p.x + hash(vec2(row, 3.0)) * 4.0) / 3.2);
+	float gap = smoothstep(0.0, 0.08, min(fy, 1.0 - fy)) * smoothstep(0.0, 0.01, min(fx, 1.0 - fx));
+	vec3 col = wood.rgb * (0.82 + hash(vec2(row, seg)) * 0.25) * (0.93 + noise(vec2(p.x * 0.8, p.y * 12.0)) * 0.12);
+	col = mix(col * 0.45, col, gap);
+	col *= 1.0 - clouds(p) * 0.17;
+	ALBEDO = col;
+	ROUGHNESS = 0.8;
 }
 """
 
@@ -57,14 +215,18 @@ const SAND_SHADER := """
 shader_type spatial;
 uniform vec4 sand : source_color;
 uniform vec4 wet : source_color;
-varying vec3 wpos;
-float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+""" + LIB + """
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	float ripple = sin(wpos.z * 3.0 + sin(wpos.x * 0.4) * 2.0) * 0.5 + 0.5;
 	float grain = hash(floor(wpos.xz * 8.0));
-	vec3 col = sand.rgb * (0.95 + ripple * 0.05 + grain * 0.04);
+	vec3 col = sand.rgb * (0.94 + ripple * 0.05 + grain * 0.05) * (0.96 + noise(wpos.xz * 0.3) * 0.06);
+	// shells and pebbles
+	if (hash(floor(wpos.xz * 1.5)) > 0.985) {
+		col = mix(col, vec3(0.98, 0.93, 0.88), smoothstep(0.18, 0.1, length(fract(wpos.xz * 1.5) - 0.5)));
+	}
 	col = mix(col, wet.rgb, smoothstep(62.0, 66.0, wpos.z));
+	col *= 1.0 - clouds(wpos.xz) * 0.17;
 	ALBEDO = col;
 	ROUGHNESS = mix(0.95, 0.4, smoothstep(62.0, 66.0, wpos.z));
 }
@@ -73,7 +235,7 @@ void fragment() {
 const WATER_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
-varying vec3 wpos;
+""" + LIB + """
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	float w1 = sin(wpos.x * 0.45 + TIME * 1.4) * 0.5 + 0.5;
@@ -89,9 +251,33 @@ void fragment() {
 	col = mix(col, vec3(0.95), foam * 0.8);
 	col += vec3(1.0) * step(0.985, w1 * w2 * w3 + 0.2) * 0.35;
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
+	col *= 1.0 - clouds(wpos.xz) * 0.12;
 	ALBEDO = col + fres * 0.2;
 	ROUGHNESS = 0.08;
 	SPECULAR = 0.8;
+}
+"""
+
+## Pond: an ellipse of calm water with a muddy shore, discarded outside.
+const POND_SHADER := """
+shader_type spatial;
+""" + LIB + """
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec2 c = (UV - 0.5) * 2.0;
+	float wob = (noise(wpos.xz * 0.35) - 0.5) * 0.12;
+	float r = length(c) + wob;
+	if (r > 1.0) discard;
+	float ripple = sin(r * 40.0 - TIME * 1.6) * 0.5 + 0.5;
+	vec3 water = mix(vec3(0.12, 0.42, 0.45), vec3(0.2, 0.58, 0.6), smoothstep(0.85, 0.5, r));
+	water += vec3(0.08) * ripple * smoothstep(0.4, 0.9, r) * 0.5;
+	water += vec3(1.0) * step(0.992, noise(wpos.xz * 3.0 + TIME * 0.3)) * 0.4;
+	vec3 shore = vec3(0.38, 0.32, 0.22);
+	vec3 col = mix(water, shore, smoothstep(0.9, 0.97, r));
+	col *= 1.0 - clouds(wpos.xz) * 0.14;
+	ALBEDO = col;
+	ROUGHNESS = mix(0.08, 0.9, smoothstep(0.9, 0.97, r));
+	SPECULAR = mix(0.8, 0.2, smoothstep(0.9, 0.97, r));
 }
 """
 
@@ -170,8 +356,12 @@ static func build_arena(parent: Node3D, clear := Vector3.INF, clear_r := 0.0) ->
 	var x0 := ax + 6.0
 	var zc := (zmax + zmin) * 0.5
 
+	var segs := PackedVector4Array()
+	for sg in Zones.path_segments():
+		segs.append(Vector4(sg[0], sg[1], sg[2], sg[3]))
 	_plane(world, Vector2(x0 * 2.0, zmax - zmin + 12.0), Vector3(0, 0, zc - 4.0),
-		_shader_mat(GRASS_SHADER, {"lush": Color(0.3, 0.5, 0.2), "deep": Color(0.17, 0.34, 0.13), "dry": Color(0.46, 0.48, 0.24)}))
+		_shader_mat(GRASS_SHADER, {"lush": Color(0.27, 0.46, 0.19), "deep": Color(0.14, 0.29, 0.12), "dry": Color(0.44, 0.46, 0.24),
+			"dirt": Color(0.46, 0.36, 0.25), "gravel": Color(0.66, 0.6, 0.5), "segs": segs, "seg_count": segs.size()}))
 	_plane(world, Vector2(x0 * 2.0 + 60.0, 12.0), Vector3(0, 0.01, zmax + 2.0),
 		_shader_mat(SAND_SHADER, {"sand": Color(0.94, 0.85, 0.62), "wet": Color(0.72, 0.62, 0.45)}))
 	_plane(world, Vector2(x0 * 2.0 + 160.0, 90.0), Vector3(0, -0.15, zmax + 53.0), _shader_mat(WATER_SHADER, {}))
@@ -179,7 +369,6 @@ static func build_arena(parent: Node3D, clear := Vector3.INF, clear_r := 0.0) ->
 	var paving := _shader_mat(PAVING_SHADER, {"stone": PATH_COLOR, "grout": Color(0.45, 0.4, 0.35)})
 	_plane(world, Vector2(4.0, zmax - zmin), Vector3(0, 0.02, zc), paving)
 	_plane(world, Vector2(ax * 2.0, 4.0), Vector3(0, 0.025, -10), paving)
-	_plane(world, Vector2(14.0, 14.0), Vector3(0, 0.03, -10), paving)
 
 	var chunks := {}
 	var glow := ModelBuilder.new()
@@ -187,6 +376,11 @@ static func build_arena(parent: Node3D, clear := Vector3.INF, clear_r := 0.0) ->
 	rng.seed = 2026
 
 	_fountain(_at(chunks, Vector3(0, 0, -10)), Vector3(0, 0, -10))
+	# themed zones (garden, market, pond, court, promenade, hedges)
+	var at := func(p: Vector3): return _at(chunks, p)
+	var ground := func(code: String, params: Dictionary, size: Vector2, pos: Vector3): _plane(world, size, pos, _shader_mat(code, params))
+	var shaders := {"plaza": PLAZA_SHADER, "ground": GROUND_SHADER, "paving": PAVING_SHADER, "court": COURT_SHADER, "plank": PLANK_SHADER, "pond": POND_SHADER}
+	Zones.build(at, glow, ground, shaders, rng, clear, clear_r)
 	# northern edge: whitewashed houses, terracotta roofs, many with solar panels
 	var x := -ax - 4.0
 	while x < ax + 4.0:
@@ -232,27 +426,35 @@ static func build_arena(parent: Node3D, clear := Vector3.INF, clear_r := 0.0) ->
 			var p := Vector3(lx, 0, -12.8)
 			_lamp(_at(chunks, p), glow, p)
 		lx += 14.0
-	# scattered park props
-	for i in 80:
-		var p := Vector3(rng.randf_range(-ax, ax), 0, rng.randf_range(zmin, zmax - 6.0))
-		if absf(p.x) < 4.5 or absf(p.z + 10.0) < 5.0 or _cleared(p, clear, clear_r):
+	# scattered park props in the open lawn (zones keep their own furniture)
+	for i in 140:
+		var p := Vector3(rng.randf_range(-ax, ax), 0, rng.randf_range(zmin, zmax - 8.0))
+		if absf(p.x) < 4.5 or absf(p.z + 10.0) < 4.5 or Zones.in_zone(p) or _cleared(p, clear, clear_r):
 			continue
-		match i % 6:
-			0, 1:
-				_palm(_at(chunks, p), p, rng)
-			2, 3:
+		match i % 10:
+			0, 1, 2:
 				_tree(_at(chunks, p), p, rng)
-			4:
-				_bench(_at(chunks, p), p, rng)
-			5:
+			3:
+				_palm(_at(chunks, p), p, rng)
+			4, 5:
+				_bush(_at(chunks, p), p, rng)
+			6:
+				_rock(_at(chunks, p), p, rng)
+			7:
 				_flowers(_at(chunks, p), p, rng)
+			8:
+				_bench(_at(chunks, p), p, rng)
+			9:
+				_bin_can(_at(chunks, p), p)
 
 	var mat := MF.vc_mat()
 	for k in chunks:
 		MF.inst(chunks[k].commit(), mat, world)
 	MF.inst(glow.commit(), MF.vc_mat(false, 3.0), world, Vector3.ZERO, false)
 	_grass(world, rng, clear, clear_r)
+	_wildflowers(world, rng, clear, clear_r)
 	_wind_farm(world)
+	world.add_child(Ambient.new())
 
 
 static func _cleared(p: Vector3, clear: Vector3, r: float) -> bool:
@@ -391,6 +593,36 @@ static func _bench(mb, p: Vector3, rng: RandomNumberGenerator) -> void:
 		mb.box(Vector3(0.06, 0.5, 0.06), iron, p + b * Vector3(sx, 0.85, -0.32), Vector3(0, yaw, 0))
 
 
+static func _bush(mb, p: Vector3, rng: RandomNumberGenerator) -> void:
+	var s := rng.randf_range(0.7, 1.2)
+	var g := [Color(0.2, 0.45, 0.2), Color(0.26, 0.52, 0.22), Color(0.3, 0.56, 0.26)]
+	for k in 4:
+		var a := float(k) / 4.0 * TAU + rng.randf()
+		mb.sphere(0.55 * s, g[k % 3], p + Vector3(cos(a) * 0.45, 0.45, sin(a) * 0.45) * s, Vector3(1, 0.85, 1))
+	if rng.randf() < 0.4:
+		for k in 5:
+			var a := rng.randf() * TAU
+			mb.sphere(0.07, Color(0.95, 0.95, 1.0) if k % 2 == 0 else Color(0.95, 0.4, 0.55), p + Vector3(cos(a) * 0.7, 0.75, sin(a) * 0.7) * s, Vector3.ONE, Vector3.ZERO, 0)
+
+
+static func _rock(mb, p: Vector3, rng: RandomNumberGenerator) -> void:
+	var grey := Color(0.55, 0.55, 0.52)
+	for k in rng.randi_range(1, 3):
+		var s := rng.randf_range(0.35, 0.8)
+		var q := p + Vector3(rng.randf_range(-0.6, 0.6), s * 0.25, rng.randf_range(-0.6, 0.6))
+		mb.sphere(s, grey.darkened(rng.randf() * 0.25), q, Vector3(1.2, 0.65, 1.0), Vector3(rng.randf(), rng.randf() * TAU, 0), 0)
+	mb.sphere(0.25, Color(0.3, 0.5, 0.22), p + Vector3(0.5, 0.05, 0.4), Vector3(1.4, 0.3, 1.0), Vector3.ZERO, 0)
+
+
+## Park litter bin (a small sorted pair: recycling + general waste).
+static func _bin_can(mb, p: Vector3) -> void:
+	mb.cyl(0.05, 0.05, 1.0, Color(0.18, 0.2, 0.22), p + Vector3(0, 0.5, 0), Vector3.ZERO, 6)
+	mb.cyl(0.26, 0.24, 0.6, Color(0.2, 0.55, 0.3), p + Vector3(-0.28, 0.6, 0), Vector3.ZERO, 10)
+	mb.cyl(0.26, 0.24, 0.6, Color(0.35, 0.35, 0.38), p + Vector3(0.28, 0.6, 0), Vector3.ZERO, 10)
+	mb.cyl(0.28, 0.28, 0.05, Color(0.15, 0.4, 0.22), p + Vector3(-0.28, 0.92, 0), Vector3.ZERO, 10)
+	mb.cyl(0.28, 0.28, 0.05, Color(0.25, 0.25, 0.28), p + Vector3(0.28, 0.92, 0), Vector3.ZERO, 10)
+
+
 static func _flowers(mb, p: Vector3, rng: RandomNumberGenerator) -> void:
 	mb.cyl(1.25, 1.3, 0.3, Color(0.9, 0.88, 0.82), p + Vector3(0, 0.15, 0), Vector3.ZERO, 16)
 	mb.cyl(1.12, 1.12, 0.06, Color(0.35, 0.24, 0.15), p + Vector3(0, 0.31, 0), Vector3.ZERO, 16)
@@ -451,7 +683,7 @@ static func _grass(parent: Node3D, rng: RandomNumberGenerator, clear: Vector3, c
 	while placed < count and tries < count * 3:
 		tries += 1
 		var p := Vector3(rng.randf_range(-GameData.ARENA_X - 4.0, GameData.ARENA_X + 4.0), 0, rng.randf_range(GameData.ARENA_Z_MIN - 3.0, GameData.ARENA_Z_MAX - 4.0))
-		if absf(p.x) < 2.3 or absf(p.z + 10.0) < 2.3 or Vector2(p.x, p.z + 10.0).length() < 7.5:
+		if absf(p.x) < 2.3 or absf(p.z + 10.0) < 2.3 or Zones.in_zone(p):
 			continue
 		var s := rng.randf_range(0.7, 1.4)
 		var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.3), s)), p)
@@ -459,6 +691,46 @@ static func _grass(parent: Node3D, rng: RandomNumberGenerator, clear: Vector3, c
 		var tint := rng.randf_range(0.75, 1.1)
 		mm.set_instance_color(placed, Color(tint, tint * rng.randf_range(0.95, 1.05), tint * 0.9))
 		placed += 1
+	mm.visible_instance_count = placed
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.material_override = MF.vc_mat()
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mmi)
+
+
+## Clusters of tiny wildflowers in the open lawn (one MultiMesh).
+static func _wildflowers(parent: Node3D, rng: RandomNumberGenerator, clear: Vector3, clear_r: float) -> void:
+	var mb := ModelBuilder.new()
+	# low-poly on purpose: there are thousands of these
+	mb.box(Vector3(0.02, 0.28, 0.02), Color(0.35, 0.55, 0.25), Vector3(0, 0.14, 0))
+	mb.cyl(0.08, 0.06, 0.03, Color(1, 1, 1), Vector3(0, 0.29, 0), Vector3.ZERO, 5)
+	mb.box(Vector3(0.04, 0.03, 0.04), Color(1.0, 0.85, 0.3), Vector3(0, 0.31, 0))
+	var palette := [Color(1, 1, 1), Color(1.0, 0.85, 0.25), Color(0.75, 0.55, 1.0), Color(1.0, 0.5, 0.6), Color(0.55, 0.75, 1.0)]
+	var count := 2600
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = mb.commit()
+	mm.instance_count = count
+	var placed := 0
+	var patches := 0
+	while placed < count and patches < 400:
+		patches += 1
+		var c := Vector3(rng.randf_range(-GameData.ARENA_X, GameData.ARENA_X), 0, rng.randf_range(GameData.ARENA_Z_MIN, GameData.ARENA_Z_MAX - 10.0))
+		if absf(c.x) < 4.0 or absf(c.z + 10.0) < 4.0 or Zones.in_zone(c) or _cleared(c, clear, clear_r):
+			continue
+		var tint: Color = palette[rng.randi() % palette.size()]
+		for k in rng.randi_range(25, 60):
+			if placed >= count:
+				break
+			var a := rng.randf() * TAU
+			var r := sqrt(rng.randf()) * rng.randf_range(1.5, 3.0)
+			var p := c + Vector3(cos(a) * r, 0, sin(a) * r)
+			var s := rng.randf_range(0.7, 1.3)
+			mm.set_instance_transform(placed, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s, s)), p))
+			mm.set_instance_color(placed, tint if rng.randf() < 0.8 else palette[rng.randi() % palette.size()])
+			placed += 1
 	mm.visible_instance_count = placed
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm

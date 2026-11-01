@@ -32,8 +32,11 @@ scripts/
   enemy_models.gd  düşman/boss modelleri (opaque + alpha + glow katmanları, tür başına cache)
   fx.gd            zemin efekti shader'ı (halka/disk/girdap) + havuzlu partiküller, shockwave, flaş ışığı
   spinner.gd       sürekli dönen node (rüzgar türbini rotorları)
-  world_builder.gd Antalya sahili haritası (oyun + menü ortak): çim/parke/kum/deniz shader'ları,
-                   40 m'lik chunk'lara birleştirilmiş dekor, MultiMesh çim, ışık + glow ayarları
+  world_builder.gd Antalya sahili haritası (oyun + menü ortak): zemin shader'ları (bulut gölgeli),
+                   40 m'lik chunk'lara birleştirilmiş dekor, MultiMesh çim ve kır çiçekleri, ışık + glow
+  world_zones.gd   temalı bölgeler: bostan, pazar, gölet, saha + oyun parkı, promenat, çitler, yol ağı
+  ambient.gd       kelebek, martı, ördek (MultiMesh)
+  batch_renderer.gd düşman ve malzemeler için kare başına doldurulan MultiMesh grupları
   menu_backdrop.gd ana menünün canlı 3D arka planı (dönen kamera, kahraman, kutular, canavarlar)
   main_menu.gd     sol menü kolonu, sağda ayrıştırma ve "Biliyor muydun?" kartları, Nasıl Oynanır penceresi
   weapons/     weapon.gd (base, Sv.1-5 + evolve() ile Sv.6) + 8 silah
