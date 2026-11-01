@@ -84,6 +84,30 @@ Autotest her 30 sn'de bir `[perf]` satırı basar: bölüm başına ms/kare (ene
 
 > [!note] Kare hızını en çok etkileyen şey ekrandaki malzeme sayısı (her biri 1 draw call). Gerekirse malzemeler MultiMesh'e taşınabilir.
 
+## Oynanış videosu (`--trailer`)
+`scripts/trailer.gd` yaklaşık 93 sn'lik senaryolu bir oynanış videosu çeker. Godot'nun **Movie Maker** modu kare kare kaydeder; bilgisayar yavaş olsa bile video akıcı çıkar.
+
+| Video | Run saati | Yer | Olay |
+|---|---|---|---|
+| 0:00 | 0:45 | Meydan → pazar | Başlık kartı, kutulara teslim, kombo |
+| 0:15 | 3:32 | Bostan | Sürü, plastik yağmuru |
+| 0:31 | 4:56 | Gölet | Mini boss uyarısı, mini boss, ultimate |
+| 0:50 | 6:24 | Spor sahası + oyun parkı | Sel, evrim kartı, elit |
+| 1:04 | 9:53 | Promenat | Boss uyarısı, final boss (3 faz), zafer |
+| 1:31 | — | — | Kapanış kartı |
+
+Sahneler arası geçişler kararma ile yapılıyor. Oyuncu rotada hafif zikzak çizerek yürür ve düzenli aralıklarla atılır. Canı %45'in altına düşmez. Bossların canı, belirlenen sürede ölecek şekilde azaltılır. Puan kaydedilmez.
+
+```bash
+# 1080p için geçici override (pencere boyutu = video boyutu)
+printf '[display]\nwindow/size/window_width_override=1920\nwindow/size/window_height_override=1080\n' > game/override.cfg
+godot --path game --write-movie reel.avi res://scenes/game.tscn -- --trailer
+rm game/override.cfg
+ffmpeg -i reel.avi -c:v libx264 -crf 19 -pix_fmt yuv420p -c:a aac -b:a 192k gameplay_video.mp4
+```
+
+> [!note] `--resolution` bayrağı Movie Maker'da dikkate alınmıyor (video 1280×720 çıkıyor). Bu yüzden `override.cfg` kullanılıyor. ffmpeg için `pip install imageio-ffmpeg` paketiyle gelen ffmpeg yeterli.
+
 > [!note] Autotest ölümsüz olduğu için zorluk ölçmez
 > Gerçek zorluk, insanlarla yapılan oyun testinde ayarlanmalı ([[Görev Panosu]]).
 

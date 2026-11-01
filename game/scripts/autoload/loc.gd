@@ -5,6 +5,12 @@ signal language_changed
 
 var lang := "tr"
 
+
+func _ready() -> void:
+	# test hook: `-- --lang=en` starts in English
+	if OS.get_cmdline_user_args().has("--lang=en"):
+		lang = "en"
+
 const STRINGS := {
 	"title_1": {"tr": "SIFIR ATIK", "en": "ZERO WASTE"},
 	"title_2": {"tr": "SAVAŞÇISI", "en": "WARRIOR"},

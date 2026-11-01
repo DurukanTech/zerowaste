@@ -18,6 +18,7 @@ const Quests = preload("res://scripts/quests.gd")
 const Events = preload("res://scripts/events.gd")
 const BatchRenderer = preload("res://scripts/batch_renderer.gd")
 const Models = preload("res://scripts/enemy_models.gd")
+const Trailer = preload("res://scripts/trailer.gd")
 
 const CELL := 2.0
 const MAX_GEMS := 400
@@ -78,6 +79,7 @@ var _stat_one := 0
 # Headless soak test: `godot --headless --fixed-fps 60 res://scenes/game.tscn -- --autotest`
 var autotest := false
 var showcase := false
+var trailer = null         # `--trailer` gameplay reel director
 var _perf_acc := 0.0
 var _perf_frames := 0
 var _perf_worst := 0.0
@@ -141,6 +143,10 @@ func _ready() -> void:
 	end_ui = EndScreen.new()
 	add_child(end_ui)
 	player.add_or_upgrade_weapon("glass")
+	if OS.get_cmdline_user_args().has("--trailer"):
+		trailer = Trailer.new()
+		trailer.game = self
+		add_child(trailer)
 
 
 func _make_root(n: String) -> Node3D:
@@ -978,7 +984,7 @@ func _finish(win: bool) -> void:
 	Sfx.play("win" if win else "lose")
 	hud.visible = false
 	var stats := run_stats()
-	var earned: int = Meta.run_points(stats, win) if autotest else Meta.record_run(stats, win)
+	var earned: int = Meta.run_points(stats, win) if autotest or trailer != null else Meta.record_run(stats, win)
 	end_ui.show_result(win, stats, earned)
 
 

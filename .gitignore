@@ -1,3 +1,7 @@
 game/.godot/
 build/
 vault/.obsidian/workspace*.json
+# large media and office files (video, decks) stay out of the repo
+*.mp4
+*.pptx
+.~lock.*

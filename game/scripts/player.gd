@@ -162,7 +162,11 @@ func tick(delta: float) -> void:
 	var inp := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var want_dash := Input.is_action_just_pressed("dash")
 	var want_ult := Input.is_action_just_pressed("ultimate")
-	if game.autotest and not game.showcase:
+	if game.trailer != null:
+		inp = game.trailer.move_input()
+		want_dash = game.trailer.want_dash()
+		want_ult = game.trailer.want_ult()
+	elif game.autotest and not game.showcase:
 		inp = _bot_input()
 		_bot_t += delta
 		want_dash = _bot_t > 3.0

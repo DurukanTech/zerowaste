@@ -36,7 +36,10 @@ func _show_next() -> void:
 	_build()
 	visible = true
 	_delay = 0.3
-	if game.autotest:
+	if game.trailer != null:
+		_delay = 0.0
+		game.trailer.on_cards(self)
+	elif game.autotest:
 		_delay = 0.0
 		_pick.call_deferred(0 if _choices[0].kind == "evolve" else randi() % _choices.size())
 
