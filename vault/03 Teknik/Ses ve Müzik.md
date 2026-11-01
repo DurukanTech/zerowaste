@@ -34,4 +34,17 @@ Sürekli çalan sesler müziğin 11–17 dB altında, önemli olaylar müziğin 
 - **Duraklatma, seviye kartı, bitiş ekranı:** Oyun duraklatılınca müzik boğuklaşır (low-pass 20 kHz → 900 Hz) ve 5 dB kısılır.
 - **Final boss:** Müzik çok yavaşça %5 hızlanır, tonu da biraz yükselir.
 
+## Web'de ses (`project.godot` → `[audio]`)
+Web'de iki sorun vardı, ikisi de ayarla çözüldü:
+- **Hiç ses gelmiyordu:** Godot web'de sesleri varsayılan olarak "sample" moduyla çalıyor (tarayıcının ses API'sine doğrudan). Bu mod ses efektlerini desteklemiyor. Bizim ses kanalları ve efektleri (limiter, compressor, low-pass) açılışta kodla kuruluyor ve bu modda hiç ses çıkmıyordu. Çözüm: `general/default_playback_type.web=0` ile web'de de masaüstündeki gibi "stream" modu kullanılıyor.
+- **Oyun içinde ses kesik kesik geliyordu:** Thread'siz web build'inde ses her karede ana döngüde hazırlanıyor. 25–30 FPS'te 50 ms'lik tampon iki kare arasında boşalıyordu. Çözüm: `driver/output_latency.web=150`. Efektler yaklaşık 0,1 sn geç duyuluyor, bu oyunda fark edilmiyor.
+
+Ölçüm Chrome'da yapıldı: WebAudio çıkışına bir AnalyserNode bağlanıp 2 sn'de bir ses seviyesi okundu.
+
+| Durum | Ses olan örnek oranı |
+|---|---|
+| Önce | Menüde 0/8, oyunda 0/25 |
+| Stream modu | Menüde 8/8, oyunda 10/25 |
+| Stream modu + 150 ms tampon | Oyunda 24/25 |
+
 İlgili notlar: [[Mimari]]
