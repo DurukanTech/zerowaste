@@ -14,6 +14,8 @@ func _ready() -> void:
 const STRINGS := {
 	"title_1": {"tr": "SIFIR ATIK", "en": "ZERO WASTE"},
 	"title_2": {"tr": "SAVAŞÇISI", "en": "WARRIOR"},
+	"preparing": {"tr": "Hazırlanıyor…", "en": "Getting ready…"},
+	"preparing_hint": {"tr": "Tarayıcı grafikleri ilk kez hazırlıyor", "en": "The browser is preparing the graphics"},
 	"tagline": {"tr": "Atıkları topla, doğru kutuya at, aşırı tüketimi durdur!", "en": "Collect the waste, sort it right, stop overconsumption!"},
 	"play": {"tr": "OYNA", "en": "PLAY"},
 	"how_to": {"tr": "NASIL OYNANIR", "en": "HOW TO PLAY"},

@@ -290,8 +290,9 @@ static func setup_environment(parent: Node3D, golden := false) -> Environment:
 	env.ambient_light_energy = 0.42
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_white = 6.0
-	# bloom on emissive gems, beams, eyes and sparks
-	env.glow_enabled = true
+	# bloom on emissive gems, beams, eyes and sparks (desktop only: the
+	# extra full-screen passes cost too much in the browser)
+	env.glow_enabled = not OS.has_feature("web")
 	env.glow_intensity = 0.45
 	env.glow_strength = 1.0
 	env.glow_bloom = 0.0
@@ -672,7 +673,7 @@ static func _grass(parent: Node3D, rng: RandomNumberGenerator, clear: Vector3, c
 		var a := float(k) / 5.0 * TAU
 		var tilt := Vector3(0.35, a, 0)
 		mb.prism(Vector3(0.09, 0.45 + (k % 2) * 0.15, 0.02), Color(0.42, 0.68, 0.26), Vector3(sin(a) * 0.05, 0.22, cos(a) * 0.05), tilt)
-	var count := 4500
+	var count := 2200 if OS.has_feature("web") else 4500
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
@@ -707,7 +708,7 @@ static func _wildflowers(parent: Node3D, rng: RandomNumberGenerator, clear: Vect
 	mb.cyl(0.08, 0.06, 0.03, Color(1, 1, 1), Vector3(0, 0.29, 0), Vector3.ZERO, 5)
 	mb.box(Vector3(0.04, 0.03, 0.04), Color(1.0, 0.85, 0.3), Vector3(0, 0.31, 0))
 	var palette := [Color(1, 1, 1), Color(1.0, 0.85, 0.25), Color(0.75, 0.55, 1.0), Color(1.0, 0.5, 0.6), Color(0.55, 0.75, 1.0)]
-	var count := 2600
+	var count := 1200 if OS.has_feature("web") else 2600
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true

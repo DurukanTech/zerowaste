@@ -56,6 +56,13 @@ scripts/
 - **Görsel overhaul:** Her model `ModelBuilder` ile tek mesh'e birleştiriliyor. Normal düşmanlar 1-2 draw call, oyuncu 6 parça (yürüme animasyonu için ayrı uzuvlar), harita dekoru chunk başına tek mesh, çim öbekleri tek MultiMesh.
 - **Işık:** Güneş (2 split, yumuşak gölge), soğuk dolgu ışığı, rim'li materyaller, glow (bloom), hafif kontrast/doygunluk.
 - **Efektler:** Vuruş kıvılcımları ve ölüm patlamaları havuzlu (sınırsız sayıda node üretmez). Vuruş parlaması boss'ları sürekli beyaz bırakmasın diye 0.16 sn'de bir sınırlı.
+- **Web build (`warmup.gd`):** Tarayıcı (ANGLE üzerinden GLES3) her materyal varyantını ilk çizildiği anda derliyor. Bu yüzden run'ın ilk 25 saniyesinde 3–5 saniyelik donmalar oluyordu. Web'de oyun başında bir "Hazırlanıyor" ekranının arkasında her düşman, boss, malzeme, silah, evrim, efekt ve kart bir kez çizdiriliyor, sonra her şey temizlenip run baştan başlıyor. Shader'lar tarayıcı oturumu boyunca saklandığı için bu ekran yalnızca ilk run'da uzun sürüyor; Intel UHD 630'da yaklaşık 14 sn. Masaüstünde `-- --warmup` ile denenebilir.
+- **Web'e özel ayarlar:**
+  - MSAA kapalı, glow kapalı.
+  - Gölge haritası 2048, yumuşak gölge filtresi kapalı.
+  - Çim 2200, kır çiçeği 1200 adet (masaüstünde 4500 ve 2600).
+  - Anlık ışık (`flash_light`) kapalı: yeni bir ışık, görünen tüm materyalleri yeniden derletiyordu.
+  - Intel UHD 630'da oyun içi FPS 25–30. Sonuç: önceden 3–4 saniyelik dört donma vardı, artık oyun sırasında en uzun takılma 0,47 sn.
 - Ekranda en fazla 320 düşman, 400 malzeme var. Sınır aşılırsa en eski malzeme otomatik toplanıyor.
 - Hasar sayıları 30'luk bir havuzdan (`Label3D`) dönüşümlü kullanılıyor.
 

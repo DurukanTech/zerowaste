@@ -19,6 +19,7 @@ const Events = preload("res://scripts/events.gd")
 const BatchRenderer = preload("res://scripts/batch_renderer.gd")
 const Models = preload("res://scripts/enemy_models.gd")
 const Trailer = preload("res://scripts/trailer.gd")
+const Warmup = preload("res://scripts/warmup.gd")
 
 const CELL := 2.0
 const MAX_GEMS := 400
@@ -80,6 +81,7 @@ var _stat_one := 0
 var autotest := false
 var showcase := false
 var trailer = null         # `--trailer` gameplay reel director
+var warmup = null          # web shader warm-up, active for the first frames
 var _perf_acc := 0.0
 var _perf_frames := 0
 var _perf_worst := 0.0
@@ -147,6 +149,10 @@ func _ready() -> void:
 		trailer = Trailer.new()
 		trailer.game = self
 		add_child(trailer)
+	elif Warmup.wanted() and not autotest:
+		warmup = Warmup.new()
+		warmup.game = self
+		add_child(warmup)
 
 
 func _make_root(n: String) -> Node3D:
@@ -160,6 +166,10 @@ func _make_root(n: String) -> Node3D:
 
 func _process(delta: float) -> void:
 	if finished:
+		return
+	if warmup != null:
+		warmup.step()
+		_draw_batches()
 		return
 	var t0 := Time.get_ticks_usec()
 	delta = minf(delta, 0.05)

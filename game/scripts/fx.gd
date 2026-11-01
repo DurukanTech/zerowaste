@@ -191,6 +191,10 @@ func level_up(pos: Vector3) -> void:
 
 
 func flash_light(pos: Vector3, color: Color, energy: float, time: float) -> void:
+	# a new light makes the web (GLES3/ANGLE) renderer recompile every lit
+	# material in view, a multi-second freeze; the shockwave carries it there
+	if OS.has_feature("web"):
+		return
 	var l := OmniLight3D.new()
 	l.light_color = color
 	l.light_energy = energy
